@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "Settings": {
+      "title": "Settings",
+      "description": "Global website settings like logo.",
+      "type": "object",
+      "properties": {
+        "logo": {
+          "type": "string",
+          "description": "The URL of the website logo."
+        }
+      },
+      "required": ["logo"]
+    },
+    "MenuItem": {
+      "title": "MenuItem",
+      "description": "A food item in the menu.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "description": { "type": "string" },
+        "category": { 
+          "type": "string",
+          "enum": ["Sushi Rolls", "Sashimi", "Platters", "Drinks"]
+        },
+        "image": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "category", "image"]
+    }
+  },
+  "firestore": {
+    "/settings/global": {
+      "schema": "Settings",
+      "description": "Global configuration document."
+    },
+    "/menu": {
+      "schema": "MenuItem",
+      "description": "Collection of menu items."
+    }
+  }
+}

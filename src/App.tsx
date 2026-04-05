@@ -1,6 +1,26 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  addDoc,
+  deleteDoc,
+  serverTimestamp 
+} from 'firebase/firestore';
+import { 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut,
+  User
+} from 'firebase/auth';
+import { db, auth } from './firebase';
+import { 
   Menu as MenuIcon, 
   X, 
   ShoppingBag, 
@@ -440,7 +460,7 @@ const Navbar = ({ activePage, setActivePage, cartCount, toggleCart, lang, setLan
   );
 };
 
-const AdminModal = ({ isOpen, onClose, onLogin }: { isOpen: boolean, onClose: () => void, onLogin: (u: string, p: string) => void }) => {
+const AdminModal = ({ isOpen, onClose, onLogin, onGoogleLogin }: { isOpen: boolean, onClose: () => void, onLogin: (u: string, p: string) => void, onGoogleLogin: () => void }) => {
   const [u, setU] = useState('');
   const [p, setP] = useState('');
   const t = translations.en; // Admin always in EN for simplicity or current lang
@@ -483,6 +503,18 @@ const AdminModal = ({ isOpen, onClose, onLogin }: { isOpen: boolean, onClose: ()
           >
             {t.login}
           </button>
+
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+            <div className="relative flex justify-center text-xs uppercase tracking-widest"><span className="bg-brand-gray px-2 text-brand-beige/30">Or</span></div>
+          </div>
+
+          <button 
+            onClick={onGoogleLogin}
+            className="w-full bg-white text-brand-dark py-4 uppercase tracking-widest text-sm hover:bg-brand-beige transition-colors flex items-center justify-center gap-3 font-bold"
+          >
+            <Globe size={18} /> Login with Google
+          </button>
         </div>
       </motion.div>
     </div>
@@ -491,11 +523,15 @@ const AdminModal = ({ isOpen, onClose, onLogin }: { isOpen: boolean, onClose: ()
 
 const AdminDashboard = ({ 
   onClose, 
-  onAddMenuItem, 
+  onAddMenuItem,
+  onDeleteMenuItem,
+  menuItems,
   t 
 }: { 
   onClose: () => void, 
   onAddMenuItem: (item: Omit<MenuItem, 'id'>) => Promise<void>,
+  onDeleteMenuItem: (id: string) => Promise<void>,
+  menuItems: MenuItem[],
   t: any
 }) => {
   const [newItem, setNewItem] = useState({ name: '', price: 0, description: '', category: 'Sushi Rolls' as any, image: '' });
@@ -508,6 +544,7 @@ const AdminDashboard = ({
     // Instant preview
     const previewUrl = URL.createObjectURL(file);
     setNewItem(prev => ({ ...prev, image: previewUrl }));
+    setIsUploading(true);
 
     // Background upload
     try {
@@ -515,15 +552,18 @@ const AdminDashboard = ({
       setNewItem(prev => ({ ...prev, image: imageUrl }));
     } catch (err) {
       console.error("Upload failed", err);
+      alert("Image upload failed. Please try again.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
   const handleAddFood = async () => {
     if (!newItem.image) return alert('Please select a photo');
+    if (isUploading) return alert('Please wait for the image to finish uploading');
     
     await onAddMenuItem(newItem);
     setNewItem({ name: '', price: 0, description: '', category: 'Sushi Rolls', image: '' });
-    onClose();
   };
 
   return (
@@ -587,10 +627,34 @@ const AdminDashboard = ({
             </div>
             <button 
               onClick={handleAddFood}
-              className="w-full bg-brand-red text-white py-4 uppercase tracking-widest text-sm"
+              disabled={isUploading}
+              className="w-full bg-brand-red hover:bg-red-700 text-white py-4 uppercase tracking-widest text-sm font-bold transition-all disabled:opacity-50"
             >
-              {t.save}
+              {isUploading ? 'Uploading Image...' : t.addFood}
             </button>
+          </div>
+
+          <div className="mt-12">
+            <h3 className="text-2xl font-serif mb-6 border-b border-white/10 pb-4">Current Menu Items</h3>
+            <div className="grid grid-cols-1 gap-4">
+              {menuItems.map(item => (
+                <div key={item.id} className="flex items-center justify-between bg-brand-gray p-4 border border-white/5">
+                  <div className="flex items-center gap-4">
+                    <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
+                    <div>
+                      <p className="font-medium">{item.name}</p>
+                      <p className="text-xs text-brand-beige/40">{item.category} • {item.price} MAD</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => onDeleteMenuItem(item.id)}
+                    className="p-2 text-brand-beige/30 hover:text-brand-red transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -607,6 +671,7 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [showMenuManager, setShowMenuManager] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>(INITIAL_MENU_ITEMS);
@@ -616,11 +681,42 @@ export default function App() {
   const isRTL = lang === 'ar';
 
   useEffect(() => {
-    const savedLogo = localStorage.getItem('okasan_logo');
-    const savedMenu = localStorage.getItem('okasan_menu');
-    if (savedLogo) setLogo(savedLogo);
-    if (savedMenu) setMenuItems(JSON.parse(savedMenu));
-  }, []);
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (user && user.email === 'dragonballsam86@gmail.com') {
+        setIsAdminLoggedIn(true);
+      } else if (!user && !isAdminLoggedIn) {
+        // Keep legacy sam login if no firebase user but already logged in via sam
+      } else if (!user) {
+        setIsAdminLoggedIn(false);
+      }
+    });
+
+    // Listen for logo changes
+    const unsubscribeLogo = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
+      if (docSnap.exists()) {
+        setLogo(docSnap.data().logo);
+      }
+    });
+
+    // Listen for menu changes
+    const q = query(collection(db, 'menu'), orderBy('createdAt', 'desc'));
+    const unsubscribeMenu = onSnapshot(q, (querySnapshot) => {
+      const items: MenuItem[] = [];
+      querySnapshot.forEach((doc) => {
+        items.push({ id: doc.id, ...doc.data() } as MenuItem);
+      });
+      if (items.length > 0) {
+        setMenuItems(items);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeLogo();
+      unsubscribeMenu();
+    };
+  }, [isAdminLoggedIn]);
 
   const addToCart = (item: MenuItem) => {
     setCart(prev => {
@@ -642,23 +738,65 @@ export default function App() {
     }
   };
 
-  const addMenuItem = async (item: Omit<MenuItem, 'id'>) => {
-    const newItem = { ...item, id: Date.now().toString() };
-    const updatedMenu = [...menuItems, newItem];
-    setMenuItems(updatedMenu);
-    setHasUnsavedChanges(true);
+  const handleGoogleLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      setIsAdminModalOpen(false);
+    } catch (error) {
+      console.error("Login failed", error);
+      alert("Login failed. Check console for details.");
+    }
   };
 
-  const updateLogo = (url: string) => {
-    setLogo(url);
-    setHasUnsavedChanges(true);
+  const handleLogout = async () => {
+    await signOut(auth);
+    setIsAdminLoggedIn(false);
+    setShowMenuManager(false);
+  };
+
+  const addMenuItem = async (item: Omit<MenuItem, 'id'>) => {
+    try {
+      // Ensure we don't have a blob URL in the database
+      if (item.image.startsWith('blob:')) {
+        alert("Please wait for the image to finish uploading.");
+        return;
+      }
+      await addDoc(collection(db, 'menu'), {
+        ...item,
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error adding menu item:", error);
+      alert("Failed to add menu item. Check console for details.");
+    }
+  };
+
+  const deleteMenuItem = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'menu', id));
+    } catch (error) {
+      console.error("Error deleting menu item:", error);
+      alert("Failed to delete menu item.");
+    }
+  };
+
+  const updateLogo = async (url: string) => {
+    try {
+      setLogo(url);
+      await setDoc(doc(db, 'settings', 'global'), { logo: url });
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error("Error updating logo:", error);
+      alert("Failed to update logo. Check console for details.");
+    }
   };
 
   const saveAllChanges = () => {
-    localStorage.setItem('okasan_menu', JSON.stringify(menuItems));
-    localStorage.setItem('okasan_logo', logo);
+    // With direct Firestore writes in addMenuItem and updateLogo, 
+    // this button is mostly redundant now but we can keep it for UI feedback
     setHasUnsavedChanges(false);
-    alert('All changes saved successfully!');
+    alert('All changes saved to database!');
   };
 
   const renderPage = () => {
@@ -932,7 +1070,7 @@ export default function App() {
                     Manage Menu
                   </button>
                   <button 
-                    onClick={() => { setIsAdminLoggedIn(false); setShowMenuManager(false); }}
+                    onClick={handleLogout}
                     className="text-[10px] uppercase tracking-widest text-brand-beige/30 hover:text-brand-red transition-colors text-left"
                   >
                     Logout
@@ -987,12 +1125,15 @@ export default function App() {
         isOpen={isAdminModalOpen} 
         onClose={() => setIsAdminModalOpen(false)} 
         onLogin={handleAdminLogin} 
+        onGoogleLogin={handleGoogleLogin}
       />
 
       {showMenuManager && (
         <AdminDashboard 
           onClose={() => setShowMenuManager(false)} 
           onAddMenuItem={addMenuItem}
+          onDeleteMenuItem={deleteMenuItem}
+          menuItems={menuItems}
           t={t}
         />
       )}
@@ -1001,22 +1142,11 @@ export default function App() {
           <motion.button 
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            onClick={() => { setIsAdminLoggedIn(false); setShowMenuManager(false); }}
+            onClick={handleLogout}
             className="bg-brand-dark border border-white/20 text-white px-8 py-3 rounded-full uppercase tracking-widest text-xs hover:bg-white/5 transition-all flex items-center gap-2 shadow-2xl"
           >
             <X size={14} /> Leave Admin Mode
           </motion.button>
-          
-          {hasUnsavedChanges && (
-            <motion.button 
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              onClick={saveAllChanges}
-              className="bg-brand-red text-white px-10 py-3 rounded-full uppercase tracking-widest text-xs hover:bg-red-700 transition-all flex items-center gap-2 shadow-2xl font-bold"
-            >
-              <Upload size={14} /> Save All Changes
-            </motion.button>
-          )}
         </div>
       )}
     </div>
