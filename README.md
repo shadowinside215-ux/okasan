@@ -1,20 +1,35 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Okasan Sushi Website
 
-# Run and deploy your AI Studio app
+This project is ready to be hosted on Netlify via GitHub.
 
-This contains everything you need to run your app locally.
+## Deployment Steps
 
-View your app in AI Studio: https://ai.studio/apps/ac976cda-f76f-4c47-bf48-5ad11da35e1b
+1.  **Push to GitHub:**
+    *   Create a new repository on GitHub.
+    *   Initialize git in this project and push the code to your repository.
 
-## Run Locally
+2.  **Connect to Netlify:**
+    *   Log in to [Netlify](https://www.netlify.com/).
+    *   Click **"Add new site"** > **"Import an existing project"**.
+    *   Select **GitHub** and choose your repository.
 
-**Prerequisites:**  Node.js
+3.  **Configure Build Settings:**
+    *   **Build command:** `npm run build`
+    *   **Publish directory:** `dist`
+    *   (These are already configured in `netlify.toml`).
 
+4.  **Set Environment Variables:**
+    *   In Netlify, go to **Site settings** > **Environment variables**.
+    *   Add the following variables:
+        *   `VITE_CLOUDINARY_CLOUD_NAME`: Your Cloudinary cloud name.
+        *   `VITE_CLOUDINARY_UPLOAD_PRESET`: Your Cloudinary unsigned upload preset.
+        *   `GEMINI_API_KEY`: (Optional) If you use AI features.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+5.  **Deploy:**
+    *   Netlify will automatically build and deploy your site.
+
+## Admin Access
+*   **Login:** Click the "OKASAN" name in the footer.
+*   **Credentials:** `sam` / `sam2006`.
+*   **Logo Upload:** Click the logo while logged in.
+*   **Menu Management:** Use the "Manage Menu" button in the footer while logged in.
