@@ -1,0 +1,7 @@
+{
+  "name": "Okasan Sushi",
+  "description": "An elegant, modern Japanese sushi restaurant website featuring a premium dark theme, responsive design, and authentic dining experience.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
