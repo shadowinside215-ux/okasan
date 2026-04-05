@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Menu as MenuIcon, 
@@ -14,7 +14,11 @@ import {
   ChevronRight,
   Plus,
   Minus,
-  Trash2
+  Trash2,
+  Globe,
+  Lock,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 
 // --- Types ---
@@ -39,8 +43,191 @@ interface Review {
   date: string;
 }
 
-// --- Data ---
-const MENU_ITEMS: MenuItem[] = [
+type Language = 'en' | 'fr' | 'ar';
+
+// --- Translations ---
+const translations = {
+  en: {
+    home: 'Home',
+    menu: 'Menu',
+    about: 'About',
+    reviews: 'Reviews',
+    contact: 'Contact',
+    viewMenu: 'View Menu',
+    orderNow: 'Order Now',
+    subtitle: 'Authentic Japanese Sushi Experience',
+    rating: '4.5 Rating',
+    basedOn: 'Based on 57 authentic reviews',
+    priceRange: 'Average price per person',
+    fullService: 'Full Service',
+    serviceDetails: 'Dine-in, Takeaway & Delivery',
+    recommendations: "Chef's Recommendations",
+    addToCart: 'Add to Cart',
+    ourMenu: 'Our Menu',
+    menuDesc: 'Each dish is prepared with the freshest ingredients, following traditional Japanese techniques passed down through generations.',
+    artOfSushi: 'The Art of Sushi',
+    aboutText1: 'Founded in the heart of Sala Al Jadida, Okasan Sushi was born from a passion for authentic Japanese culinary traditions. "Okasan" means mother in Japanese, reflecting our commitment to the care, warmth, and dedication we put into every dish.',
+    aboutText2: 'Our Master Sushi Chef brings over 20 years of experience, sourcing only the finest seasonal fish from sustainable markets. We believe that great sushi is a balance of temperature, texture, and timing.',
+    theExperience: 'The Experience',
+    expText: 'Our dining room is designed as a sanctuary of minimalism. From the soft lighting to the natural wood textures, every element is chosen to enhance your sensory journey through Japanese flavors.',
+    quote: 'Quality is not an act, it is a habit.',
+    guestExp: 'Guest Experiences',
+    visitUs: 'Visit Us',
+    address: 'Address',
+    reservations: 'Reservations',
+    hours: 'Opening Hours',
+    getDirections: 'Get Directions',
+    callNow: 'Call Now',
+    openNow: 'Open Now',
+    footerDesc: 'Authentic Japanese sushi experience in the heart of Sala Al Jadida. Freshness, tradition, and elegance in every bite.',
+    quickLinks: 'Quick Links',
+    newsletter: 'Newsletter',
+    newsDesc: 'Subscribe for exclusive offers and seasonal menu updates.',
+    yourEmail: 'Your email',
+    rights: 'All rights reserved.',
+    yourOrder: 'Your Order',
+    cartEmpty: 'Your cart is empty',
+    startOrdering: 'Start Ordering',
+    subtotal: 'Subtotal',
+    checkout: 'Checkout Now',
+    adminLogin: 'Admin Login',
+    username: 'Username',
+    password: 'Password',
+    login: 'Login',
+    adminPanel: 'Admin Panel',
+    addFood: 'Add New Food',
+    foodName: 'Food Name',
+    price: 'Price (MAD)',
+    category: 'Category',
+    description: 'Description',
+    uploadPhoto: 'Upload Photo',
+    uploadLogo: 'Upload Logo',
+    save: 'Save',
+    cancel: 'Cancel',
+    logout: 'Logout'
+  },
+  fr: {
+    home: 'Accueil',
+    menu: 'Menu',
+    about: 'À propos',
+    reviews: 'Avis',
+    contact: 'Contact',
+    viewMenu: 'Voir le Menu',
+    orderNow: 'Commander',
+    subtitle: 'Expérience Authentique de Sushi Japonais',
+    rating: 'Note 4.5',
+    basedOn: 'Basé sur 57 avis authentiques',
+    priceRange: 'Prix moyen par personne',
+    fullService: 'Service Complet',
+    serviceDetails: 'Sur place, à emporter et livraison',
+    recommendations: 'Recommandations du Chef',
+    addToCart: 'Ajouter au Panier',
+    ourMenu: 'Notre Menu',
+    menuDesc: 'Chaque plat est préparé avec les ingrédients les plus frais, suivant des techniques japonaises traditionnelles transmises de génération en génération.',
+    artOfSushi: "L'Art du Sushi",
+    aboutText1: 'Fondé au cœur de Sala Al Jadida, Okasan Sushi est né d\'une passion pour les traditions culinaires japonaises authentiques. "Okasan" signifie mère en japonais, reflétant notre engagement envers le soin, la chaleur et le dévouement que nous mettons dans chaque plat.',
+    aboutText2: 'Notre maître sushi apporte plus de 20 ans d\'expérience, s\'approvisionnant uniquement en poissons de saison les plus fins provenant de marchés durables. Nous croyons que le grand sushi est un équilibre de température, de texture et de timing.',
+    theExperience: "L'Expérience",
+    expText: 'Notre salle à manger est conçue comme un sanctuaire de minimalisme. De l\'éclairage doux aux textures de bois naturel, chaque élément est choisi pour améliorer votre voyage sensoriel à travers les saveurs japonaises.',
+    quote: 'La qualité n\'est pas un acte, c\'est une habitude.',
+    guestExp: 'Expériences des Clients',
+    visitUs: 'Visitez-nous',
+    address: 'Adresse',
+    reservations: 'Réservations',
+    hours: 'Horaires d\'ouverture',
+    getDirections: 'Itinéraire',
+    callNow: 'Appeler',
+    openNow: 'Ouvert maintenant',
+    footerDesc: 'Expérience authentique de sushi japonais au cœur de Sala Al Jadida. Fraîcheur, tradition et élégance dans chaque bouchée.',
+    quickLinks: 'Liens Rapides',
+    newsletter: 'Newsletter',
+    newsDesc: 'Inscrivez-vous pour des offres exclusives et des mises à jour du menu saisonnier.',
+    yourEmail: 'Votre email',
+    rights: 'Tous droits réservés.',
+    yourOrder: 'Votre Commande',
+    cartEmpty: 'Votre panier est vide',
+    startOrdering: 'Commencer la commande',
+    subtotal: 'Sous-total',
+    checkout: 'Commander maintenant',
+    adminLogin: 'Connexion Admin',
+    username: 'Nom d\'utilisateur',
+    password: 'Mot de passe',
+    login: 'Se connecter',
+    adminPanel: 'Panneau Admin',
+    addFood: 'Ajouter un plat',
+    foodName: 'Nom du plat',
+    price: 'Prix (MAD)',
+    category: 'Catégorie',
+    description: 'Description',
+    uploadPhoto: 'Télécharger une photo',
+    uploadLogo: 'Télécharger le logo',
+    save: 'Enregistrer',
+    cancel: 'Annuler',
+    logout: 'Déconnexion'
+  },
+  ar: {
+    home: 'الرئيسية',
+    menu: 'المنيو',
+    about: 'من نحن',
+    reviews: 'التقييمات',
+    contact: 'اتصل بنا',
+    viewMenu: 'عرض المنيو',
+    orderNow: 'اطلب الآن',
+    subtitle: 'تجربة سوشي يابانية أصيلة',
+    rating: 'تقييم 4.5',
+    basedOn: 'بناءً على 57 تقييمًا حقيقيًا',
+    priceRange: 'متوسط السعر للشخص الواحد',
+    fullService: 'خدمة كاملة',
+    serviceDetails: 'تناول الطعام، سفري وتوصيل',
+    recommendations: 'توصيات الشيف',
+    addToCart: 'أضف إلى السلة',
+    ourMenu: 'قائمتنا',
+    menuDesc: 'يتم تحضير كل طبق بأجود المكونات الطازجة، باتباع التقنيات اليابانية التقليدية المتوارثة عبر الأجيال.',
+    artOfSushi: 'فن السوشي',
+    aboutText1: 'تأسس أوكاسان سوشي في قلب سلا الجديدة، ونبع من شغف بالتقاليد الطهوية اليابانية الأصيلة. "أوكاسان" تعني الأم باليابانية، مما يعكس التزامنا بالرعاية والدفء والتفاني الذي نضعه في كل طبق.',
+    aboutText2: 'يتمتع شيف السوشي لدينا بخبرة تزيد عن 20 عامًا، حيث يحصل فقط على أجود الأسماك الموسمية من الأسواق المستدامة. نحن نؤمن بأن السوشي الرائع هو توازن بين درجة الحرارة والملمس والتوقيت.',
+    theExperience: 'التجربة',
+    expText: 'تم تصميم غرفة الطعام لدينا لتكون ملاذًا للبساطة. من الإضاءة الخافتة إلى أنسجة الخشب الطبيعي، تم اختيار كل عنصر لتعزيز رحلتك الحسية عبر النكهات اليابانية.',
+    quote: 'الجودة ليست فعلًا، بل هي عادة.',
+    guestExp: 'تجارب الضيوف',
+    visitUs: 'تفضل بزيارتنا',
+    address: 'العنوان',
+    reservations: 'الحجوزات',
+    hours: 'ساعات العمل',
+    getDirections: 'احصل على الاتجاهات',
+    callNow: 'اتصل الآن',
+    openNow: 'مفتوح الآن',
+    footerDesc: 'تجربة سوشي يابانية أصيلة في قلب سلا الجديدة. نضارة، تقاليد وأناقة في كل لقمة.',
+    quickLinks: 'روابط سريعة',
+    newsletter: 'النشرة الإخبارية',
+    newsDesc: 'اشترك للحصول على عروض حصرية وتحديثات المنيو الموسمي.',
+    yourEmail: 'بريدك الإلكتروني',
+    rights: 'جميع الحقوق محفوظة.',
+    yourOrder: 'طلبك',
+    cartEmpty: 'سلتك فارغة',
+    startOrdering: 'ابدأ الطلب',
+    subtotal: 'المجموع الفرعي',
+    checkout: 'الدفع الآن',
+    adminLogin: 'دخول المسؤول',
+    username: 'اسم المستخدم',
+    password: 'كلمة المرور',
+    login: 'تسجيل الدخول',
+    adminPanel: 'لوحة التحكم',
+    addFood: 'إضافة طعام جديد',
+    foodName: 'اسم الطعام',
+    price: 'السعر (درهم)',
+    category: 'الفئة',
+    description: 'الوصف',
+    uploadPhoto: 'رفع صورة',
+    uploadLogo: 'رفع الشعار',
+    save: 'حفظ',
+    cancel: 'إلغاء',
+    logout: 'تسجيل الخروج'
+  }
+};
+
+// --- Initial Data ---
+const INITIAL_MENU_ITEMS: MenuItem[] = [
   {
     id: 'r1',
     name: 'Dragon Roll',
@@ -56,38 +243,6 @@ const MENU_ITEMS: MenuItem[] = [
     description: 'Fresh tuna, spicy mayo, and cucumber with sesame seeds.',
     category: 'Sushi Rolls',
     image: 'https://images.unsplash.com/photo-1559466273-d95e72debaf8?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 's1',
-    name: 'Salmon Sashimi',
-    price: 110,
-    description: '5 pieces of premium Atlantic salmon, thinly sliced.',
-    category: 'Sashimi',
-    image: 'https://images.unsplash.com/photo-1534422298391-e4f8c170db76?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 's2',
-    name: 'Yellowtail Sashimi',
-    price: 130,
-    description: '5 pieces of fresh Hamachi with jalapeño and ponzu.',
-    category: 'Sashimi',
-    image: 'https://images.unsplash.com/photo-1582450871972-ed59640507d5?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'p1',
-    name: 'Okasan Deluxe Platter',
-    price: 350,
-    description: '24 pieces of assorted nigiri, rolls, and sashimi.',
-    category: 'Platters',
-    image: 'https://images.unsplash.com/photo-1553621042-f6e147245754?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'd1',
-    name: 'Matcha Green Tea',
-    price: 35,
-    description: 'Traditional Japanese whisked green tea.',
-    category: 'Drinks',
-    image: 'https://images.unsplash.com/photo-1582793988951-9aed5509eb97?auto=format&fit=crop&w=800&q=80'
   }
 ];
 
@@ -105,23 +260,50 @@ const REVIEWS: Review[] = [
     rating: 4,
     comment: "Excellent quality. The Dragon Roll is a must-try. Slightly long wait for delivery but worth it.",
     date: "1 month ago"
-  },
-  {
-    id: 3,
-    name: "Youssef Tazi",
-    rating: 5,
-    comment: "Authentic experience. The minimalist decor really sets the mood for a premium dinner.",
-    date: "3 days ago"
   }
 ];
 
+// --- Cloudinary Helper ---
+const uploadToCloudinary = async (file: File): Promise<string> => {
+  const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !uploadPreset || cloudName === 'your_cloud_name') {
+    console.error('Cloudinary configuration missing. Please check .env');
+    // For demo purposes, return a local URL if config is missing
+    return URL.createObjectURL(file);
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', uploadPreset);
+
+  try {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    const data = await response.json();
+    return data.secure_url;
+  } catch (error) {
+    console.error('Upload failed:', error);
+    return URL.createObjectURL(file);
+  }
+};
+
 // --- Components ---
 
-const Navbar = ({ activePage, setActivePage, cartCount, toggleCart }: { 
+const Navbar = ({ activePage, setActivePage, cartCount, toggleCart, lang, setLang, logo, t, isAdmin, onLogoClick }: { 
   activePage: string, 
   setActivePage: (page: string) => void,
   cartCount: number,
-  toggleCart: () => void
+  toggleCart: () => void,
+  lang: Language,
+  setLang: (l: Language) => void,
+  logo: string,
+  t: any,
+  isAdmin: boolean,
+  onLogoClick: () => void
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -133,22 +315,37 @@ const Navbar = ({ activePage, setActivePage, cartCount, toggleCart }: {
   }, []);
 
   const navLinks = [
-    { name: 'Home', id: 'home' },
-    { name: 'Menu', id: 'menu' },
-    { name: 'About', id: 'about' },
-    { name: 'Reviews', id: 'reviews' },
-    { name: 'Contact', id: 'contact' },
+    { name: t.home, id: 'home' },
+    { name: t.menu, id: 'menu' },
+    { name: t.about, id: 'about' },
+    { name: t.reviews, id: 'reviews' },
+    { name: t.contact, id: 'contact' },
   ];
 
   return (
     <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-brand-dark/90 backdrop-blur-md py-3 shadow-lg' : 'bg-transparent py-6'}`}>
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         <div 
-          className="cursor-pointer flex items-center gap-2"
-          onClick={() => setActivePage('home')}
+          className={`flex items-center gap-4 ${isAdmin ? 'cursor-pointer ring-2 ring-brand-red ring-offset-2 ring-offset-brand-dark' : 'cursor-pointer'}`}
+          onClick={() => isAdmin ? onLogoClick() : setActivePage('home')}
+          title={isAdmin ? 'Click to change logo' : ''}
         >
-          <span className="text-2xl font-serif font-bold text-brand-red tracking-widest">OKASAN</span>
-          <span className="text-sm font-light tracking-[0.3em] hidden sm:block">SUSHI</span>
+          <div className="w-12 h-12 rounded-full border border-white/20 overflow-hidden bg-brand-gray flex items-center justify-center relative group">
+            {logo ? (
+              <img src={logo} alt="Logo" className="w-full h-full object-cover" />
+            ) : (
+              <ImageIcon size={20} className="text-brand-beige/20" />
+            )}
+            {isAdmin && (
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Upload size={16} className="text-white" />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xl md:text-2xl font-serif font-bold text-brand-red tracking-widest leading-none">OKASAN</span>
+            <span className="text-[10px] font-light tracking-[0.4em] text-brand-beige/60">SUSHI</span>
+          </div>
         </div>
 
         {/* Desktop Nav */}
@@ -157,11 +354,24 @@ const Navbar = ({ activePage, setActivePage, cartCount, toggleCart }: {
             <button
               key={link.id}
               onClick={() => setActivePage(link.id)}
-              className={`text-sm uppercase tracking-widest transition-colors hover:text-brand-red ${activePage === link.id ? 'text-brand-red' : 'text-brand-beige'}`}
+              className={`text-xs uppercase tracking-widest transition-colors hover:text-brand-red ${activePage === link.id ? 'text-brand-red' : 'text-brand-beige'}`}
             >
               {link.name}
             </button>
           ))}
+          
+          <div className="flex items-center gap-2 border-l border-white/10 pl-6 ml-2">
+            {(['en', 'fr', 'ar'] as Language[]).map((l) => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className={`text-[10px] uppercase tracking-widest w-6 h-6 flex items-center justify-center rounded-full border ${lang === l ? 'bg-brand-red border-brand-red text-white' : 'border-white/10 text-brand-beige/60 hover:border-brand-red'}`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+
           <button 
             onClick={toggleCart}
             className="relative p-2 hover:text-brand-red transition-colors"
@@ -212,6 +422,17 @@ const Navbar = ({ activePage, setActivePage, cartCount, toggleCart }: {
                 {link.name}
               </button>
             ))}
+            <div className="flex gap-4 pt-4 border-t border-white/10">
+              {(['en', 'fr', 'ar'] as Language[]).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`text-xs uppercase tracking-widest px-3 py-1 rounded border ${lang === l ? 'bg-brand-red border-brand-red text-white' : 'border-white/10 text-brand-beige/60'}`}
+                >
+                  {l === 'en' ? 'English' : l === 'fr' ? 'Français' : 'العربية'}
+                </button>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -219,546 +440,187 @@ const Navbar = ({ activePage, setActivePage, cartCount, toggleCart }: {
   );
 };
 
-const Hero = ({ onMenuClick }: { onMenuClick: () => void }) => {
+const AdminModal = ({ isOpen, onClose, onLogin }: { isOpen: boolean, onClose: () => void, onLogin: (u: string, p: string) => void }) => {
+  const [u, setU] = useState('');
+  const [p, setP] = useState('');
+  const t = translations.en; // Admin always in EN for simplicity or current lang
+
+  if (!isOpen) return null;
+
   return (
-    <section className="relative h-screen flex items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 z-0">
-        <img 
-          src="https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?auto=format&fit=crop&w=1920&q=80" 
-          alt="Sushi background"
-          className="w-full h-full object-cover opacity-60"
-          referrerPolicy="no-referrer"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/20 via-brand-dark/40 to-brand-dark"></div>
-      </div>
-
-      <div className="relative z-10 text-center px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <h1 className="text-6xl md:text-8xl font-serif mb-4 tracking-tighter">Okasan Sushi</h1>
-          <p className="text-xl md:text-2xl font-light tracking-[0.2em] mb-10 text-brand-beige/80 italic">
-            Authentic Japanese Sushi Experience
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button 
-              onClick={onMenuClick}
-              className="bg-brand-red hover:bg-red-700 text-white px-10 py-4 rounded-none tracking-widest uppercase text-sm transition-all duration-300"
-            >
-              View Menu
-            </button>
-            <button 
-              onClick={onMenuClick}
-              className="border border-brand-beige hover:bg-brand-beige hover:text-brand-dark text-brand-beige px-10 py-4 rounded-none tracking-widest uppercase text-sm transition-all duration-300"
-            >
-              Order Now
-            </button>
-          </div>
-        </motion.div>
-      </div>
-
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
       <motion.div 
-        animate={{ y: [0, 10, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 text-brand-beige/40"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-brand-gray p-8 w-full max-w-md border border-white/10"
       >
-        <div className="w-[1px] h-20 bg-gradient-to-b from-brand-beige/40 to-transparent mx-auto"></div>
+        <div className="flex justify-between items-center mb-8">
+          <h3 className="text-2xl font-serif flex items-center gap-3"><Lock size={20} className="text-brand-red" /> {t.adminLogin}</h3>
+          <button onClick={onClose}><X size={24} /></button>
+        </div>
+        <div className="space-y-6">
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-brand-beige/40 mb-2">{t.username}</label>
+            <input 
+              type="text" 
+              value={u}
+              onChange={(e) => setU(e.target.value)}
+              className="w-full bg-brand-dark border border-white/10 px-4 py-3 focus:outline-none focus:border-brand-red"
+            />
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-brand-beige/40 mb-2">{t.password}</label>
+            <input 
+              type="password" 
+              value={p}
+              onChange={(e) => setP(e.target.value)}
+              className="w-full bg-brand-dark border border-white/10 px-4 py-3 focus:outline-none focus:border-brand-red"
+            />
+          </div>
+          <button 
+            onClick={() => onLogin(u, p)}
+            className="w-full bg-brand-red text-white py-4 uppercase tracking-widest text-sm hover:bg-red-700 transition-colors"
+          >
+            {t.login}
+          </button>
+        </div>
       </motion.div>
-    </section>
+    </div>
   );
 };
 
-const QuickInfo = () => {
-  return (
-    <section className="py-20 bg-brand-gray japanese-texture">
-      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
-        <div className="flex flex-col items-center text-center">
-          <div className="flex text-brand-red mb-2">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} size={20} fill={i < 4 ? "currentColor" : "none"} />
-            ))}
-          </div>
-          <h3 className="text-xl font-serif mb-1">4.5 Rating</h3>
-          <p className="text-brand-beige/60 text-sm">Based on 57 authentic reviews</p>
-        </div>
-        <div className="flex flex-col items-center text-center">
-          <h3 className="text-xl font-serif mb-1">MAD 100–150</h3>
-          <p className="text-brand-beige/60 text-sm">Average price per person</p>
-        </div>
-        <div className="flex flex-col items-center text-center">
-          <h3 className="text-xl font-serif mb-1">Full Service</h3>
-          <p className="text-brand-beige/60 text-sm">Dine-in, Takeaway & Delivery</p>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const FeaturedDishes = ({ onAddToCart }: { onAddToCart: (item: MenuItem) => void }) => {
-  const featured = MENU_ITEMS.slice(0, 3);
-
-  return (
-    <section className="py-24 bg-brand-dark">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex justify-between items-end mb-16">
-          <div>
-            <h2 className="text-4xl md:text-5xl font-serif mb-4">Chef's Recommendations</h2>
-            <div className="w-20 h-[2px] bg-brand-red"></div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          {featured.map((item, idx) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              viewport={{ once: true }}
-              className="group relative"
-            >
-              <div className="overflow-hidden aspect-[4/5] mb-6">
-                <img 
-                  src={item.image} 
-                  alt={item.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-brand-dark/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                  <button 
-                    onClick={() => onAddToCart(item)}
-                    className="bg-brand-red text-white px-6 py-3 tracking-widest uppercase text-xs"
-                  >
-                    Add to Cart
-                  </button>
-                </div>
-              </div>
-              <h3 className="text-2xl font-serif mb-2">{item.name}</h3>
-              <p className="text-brand-beige/60 text-sm mb-4 line-clamp-2">{item.description}</p>
-              <span className="text-brand-red font-medium">{item.price} MAD</span>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const MenuSection = ({ onAddToCart }: { onAddToCart: (item: MenuItem) => void }) => {
-  const categories: MenuItem['category'][] = ['Sushi Rolls', 'Sashimi', 'Platters', 'Drinks'];
-  const [activeCategory, setActiveCategory] = useState<MenuItem['category']>('Sushi Rolls');
-
-  return (
-    <section className="py-32 bg-brand-dark min-h-screen">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-20">
-          <h2 className="text-5xl md:text-6xl font-serif mb-6">Our Menu</h2>
-          <p className="text-brand-beige/60 max-w-2xl mx-auto italic">
-            Each dish is prepared with the freshest ingredients, following traditional Japanese techniques passed down through generations.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap justify-center gap-4 md:gap-10 mb-16 border-b border-white/10 pb-4">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`text-sm uppercase tracking-[0.2em] pb-4 relative transition-colors ${activeCategory === cat ? 'text-brand-red' : 'text-brand-beige/60'}`}
-            >
-              {cat}
-              {activeCategory === cat && (
-                <motion.div layoutId="activeCat" className="absolute bottom-0 left-0 w-full h-[2px] bg-brand-red" />
-              )}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-12">
-          {MENU_ITEMS.filter(item => item.category === activeCategory).map((item) => (
-            <motion.div 
-              key={item.id}
-              layout
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex justify-between items-start group"
-            >
-              <div className="flex-1 pr-4">
-                <div className="flex items-baseline justify-between mb-2">
-                  <h4 className="text-xl font-serif group-hover:text-brand-red transition-colors">{item.name}</h4>
-                  <div className="flex-1 border-b border-dotted border-white/20 mx-4"></div>
-                  <span className="text-brand-red">{item.price} MAD</span>
-                </div>
-                <p className="text-brand-beige/50 text-sm italic">{item.description}</p>
-              </div>
-              <button 
-                onClick={() => onAddToCart(item)}
-                className="p-2 border border-white/10 hover:bg-brand-red hover:border-brand-red transition-all"
-              >
-                <Plus size={16} />
-              </button>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const AboutSection = () => {
-  return (
-    <section className="py-32 bg-brand-gray japanese-texture overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-5xl md:text-6xl font-serif mb-8">The Art of Sushi</h2>
-            <div className="space-y-6 text-brand-beige/80 leading-relaxed">
-              <p>
-                Founded in the heart of Sala Al Jadida, Okasan Sushi was born from a passion for authentic Japanese culinary traditions. "Okasan" means mother in Japanese, reflecting our commitment to the care, warmth, and dedication we put into every dish.
-              </p>
-              <p>
-                Our Master Sushi Chef brings over 20 years of experience, sourcing only the finest seasonal fish from sustainable markets. We believe that great sushi is a balance of temperature, texture, and timing.
-              </p>
-              <div className="pt-6">
-                <h3 className="text-2xl font-serif mb-4 text-brand-red">The Experience</h3>
-                <p>
-                  Our dining room is designed as a sanctuary of minimalism. From the soft lighting to the natural wood textures, every element is chosen to enhance your sensory journey through Japanese flavors.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="relative"
-          >
-            <div className="aspect-square relative z-10">
-              <img 
-                src="https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1000&q=80" 
-                alt="Chef preparing sushi"
-                className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <div className="absolute -top-10 -right-10 w-full h-full border-2 border-brand-red -z-0"></div>
-            <div className="absolute -bottom-6 -left-6 bg-brand-red p-8 z-20 hidden md:block">
-              <p className="text-4xl font-serif text-white italic">"Quality is not an act, it is a habit."</p>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const ReviewsSection = () => {
-  return (
-    <section className="py-32 bg-brand-dark">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-20">
-          <div className="flex justify-center text-brand-red mb-4">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} size={32} fill={i < 4 ? "currentColor" : "none"} />
-            ))}
-          </div>
-          <h2 className="text-5xl font-serif mb-2">4.5 / 5</h2>
-          <p className="text-brand-beige/60 uppercase tracking-widest text-sm">Guest Experiences</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {REVIEWS.map((review) => (
-            <div key={review.id} className="bg-brand-gray p-10 border border-white/5 relative">
-              <div className="flex text-brand-red mb-6">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={14} fill={i < review.rating ? "currentColor" : "none"} />
-                ))}
-              </div>
-              <p className="text-brand-beige/80 italic mb-8 leading-relaxed">"{review.comment}"</p>
-              <div className="flex justify-between items-center border-t border-white/10 pt-6">
-                <span className="font-serif text-lg">{review.name}</span>
-                <span className="text-xs text-brand-beige/40">{review.date}</span>
-              </div>
-            </div>
-          ))}
-          {/* Added a realistic mixed review */}
-          <div className="bg-brand-gray p-10 border border-white/5 relative">
-            <div className="flex text-brand-red mb-6">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} fill={i < 3 ? "currentColor" : "none"} />
-              ))}
-            </div>
-            <p className="text-brand-beige/80 italic mb-8 leading-relaxed">"The food is incredible, but the restaurant was very crowded on Friday night and we had to wait 20 minutes for our table despite having a reservation."</p>
-            <div className="flex justify-between items-center border-t border-white/10 pt-6">
-              <span className="font-serif text-lg">Karim Idrissi</span>
-              <span className="text-xs text-brand-beige/40">2 months ago</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const ContactSection = () => {
-  return (
-    <section className="py-32 bg-brand-dark japanese-texture">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
-          <div>
-            <h2 className="text-5xl font-serif mb-12">Visit Us</h2>
-            
-            <div className="space-y-10">
-              <div className="flex gap-6">
-                <div className="w-12 h-12 bg-brand-red flex items-center justify-center flex-shrink-0">
-                  <MapPin size={24} className="text-white" />
-                </div>
-                <div>
-                  <h4 className="text-xl font-serif mb-2">Address</h4>
-                  <p className="text-brand-beige/60">3, Res, mag 3 Pass. Salima,<br />Sala Al Jadida 11100, Morocco</p>
-                  <button className="text-brand-red text-sm uppercase tracking-widest mt-4 flex items-center gap-2 hover:gap-4 transition-all">
-                    Get Directions <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-6">
-                <div className="w-12 h-12 bg-brand-red flex items-center justify-center flex-shrink-0">
-                  <Phone size={24} className="text-white" />
-                </div>
-                <div>
-                  <h4 className="text-xl font-serif mb-2">Reservations</h4>
-                  <p className="text-brand-beige/60">05 37 53 63 81</p>
-                  <button className="text-brand-red text-sm uppercase tracking-widest mt-4 flex items-center gap-2 hover:gap-4 transition-all">
-                    Call Now <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-6">
-                <div className="w-12 h-12 bg-brand-red flex items-center justify-center flex-shrink-0">
-                  <Clock size={24} className="text-white" />
-                </div>
-                <div>
-                  <h4 className="text-xl font-serif mb-2">Opening Hours</h4>
-                  <p className="text-brand-beige/60">Monday – Sunday<br />12:00 PM – 01:00 AM</p>
-                  <p className="text-brand-red text-xs mt-2 uppercase tracking-widest">Open Now</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="h-[500px] w-full glass-morphism p-2">
-            <iframe 
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3308.218567117185!2d-6.7538888!3d33.9861111!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xda7694f4f4f4f4f%3A0x4f4f4f4f4f4f4f4f!2sSala%20Al%20Jadida!5e0!3m2!1sen!2sma!4v1620000000000!5m2!1sen!2sma" 
-              className="w-full h-full border-0 grayscale contrast-125"
-              allowFullScreen={true} 
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            ></iframe>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const Footer = ({ setActivePage }: { setActivePage: (page: string) => void }) => {
-  return (
-    <footer className="bg-brand-gray pt-20 pb-10 border-t border-white/5">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
-          <div className="col-span-1 md:col-span-1">
-            <div className="flex items-center gap-2 mb-6">
-              <span className="text-2xl font-serif font-bold text-brand-red tracking-widest">OKASAN</span>
-            </div>
-            <p className="text-brand-beige/50 text-sm leading-relaxed mb-8">
-              Authentic Japanese sushi experience in the heart of Sala Al Jadida. Freshness, tradition, and elegance in every bite.
-            </p>
-            <div className="flex gap-4">
-              <button className="w-10 h-10 border border-white/10 flex items-center justify-center hover:bg-brand-red hover:border-brand-red transition-all">
-                <Instagram size={18} />
-              </button>
-              <button className="w-10 h-10 border border-white/10 flex items-center justify-center hover:bg-brand-red hover:border-brand-red transition-all">
-                <Facebook size={18} />
-              </button>
-              <button className="w-10 h-10 border border-white/10 flex items-center justify-center hover:bg-brand-red hover:border-brand-red transition-all">
-                <Twitter size={18} />
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-lg font-serif mb-6">Quick Links</h4>
-            <ul className="space-y-4 text-sm text-brand-beige/50">
-              <li><button onClick={() => setActivePage('home')} className="hover:text-brand-red transition-colors">Home</button></li>
-              <li><button onClick={() => setActivePage('menu')} className="hover:text-brand-red transition-colors">Menu</button></li>
-              <li><button onClick={() => setActivePage('about')} className="hover:text-brand-red transition-colors">About Us</button></li>
-              <li><button onClick={() => setActivePage('reviews')} className="hover:text-brand-red transition-colors">Reviews</button></li>
-              <li><button onClick={() => setActivePage('contact')} className="hover:text-brand-red transition-colors">Contact</button></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-lg font-serif mb-6">Contact</h4>
-            <ul className="space-y-4 text-sm text-brand-beige/50">
-              <li className="flex items-start gap-3">
-                <MapPin size={16} className="text-brand-red mt-1" />
-                <span>3, Res, mag 3 Pass. Salima,<br />Sala Al Jadida 11100</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone size={16} className="text-brand-red" />
-                <span>05 37 53 63 81</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Clock size={16} className="text-brand-red" />
-                <span>12:00 PM – 01:00 AM</span>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-lg font-serif mb-6">Newsletter</h4>
-            <p className="text-brand-beige/50 text-sm mb-4">Subscribe for exclusive offers and seasonal menu updates.</p>
-            <div className="flex">
-              <input 
-                type="email" 
-                placeholder="Your email" 
-                className="bg-brand-dark border border-white/10 px-4 py-2 text-sm w-full focus:outline-none focus:border-brand-red"
-              />
-              <button className="bg-brand-red px-4 py-2 text-white">
-                <ChevronRight size={20} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-white/5 pt-10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-brand-beige/30 uppercase tracking-widest">
-          <p>© 2026 Okasan Sushi. All rights reserved.</p>
-          <div className="flex gap-8">
-            <button className="hover:text-brand-beige transition-colors">Privacy Policy</button>
-            <button className="hover:text-brand-beige transition-colors">Terms of Service</button>
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-};
-
-const CartDrawer = ({ isOpen, onClose, cart, updateQuantity, removeFromCart }: {
-  isOpen: boolean,
-  onClose: () => void,
-  cart: CartItem[],
-  updateQuantity: (id: string, delta: number) => void,
-  removeFromCart: (id: string) => void
+const AdminDashboard = ({ 
+  onClose, 
+  onAddMenuItem, 
+  t 
+}: { 
+  onClose: () => void, 
+  onAddMenuItem: (item: Omit<MenuItem, 'id'>) => Promise<void>,
+  t: any
 }) => {
-  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const [newItem, setNewItem] = useState({ name: '', price: 0, description: '', category: 'Sushi Rolls' as any, image: '' });
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Instant preview
+    const previewUrl = URL.createObjectURL(file);
+    setNewItem(prev => ({ ...prev, image: previewUrl }));
+
+    // Background upload
+    try {
+      const imageUrl = await uploadToCloudinary(file);
+      setNewItem(prev => ({ ...prev, image: imageUrl }));
+    } catch (err) {
+      console.error("Upload failed", err);
+    }
+  };
+
+  const handleAddFood = async () => {
+    if (!newItem.image) return alert('Please select a photo');
+    
+    await onAddMenuItem(newItem);
+    setNewItem({ name: '', price: 0, description: '', category: 'Sushi Rolls', image: '' });
+    onClose();
+  };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
-          />
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 h-full w-full max-w-md bg-brand-dark z-[70] shadow-2xl flex flex-col"
-          >
-            <div className="p-6 border-b border-white/10 flex justify-between items-center">
-              <h3 className="text-2xl font-serif">Your Order</h3>
-              <button onClick={onClose} className="p-2 hover:text-brand-red transition-colors">
-                <X size={24} />
-              </button>
-            </div>
+    <div className="fixed inset-0 z-[100] bg-brand-dark/95 backdrop-blur-lg overflow-y-auto p-6 md:p-12">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex justify-between items-center mb-12 border-b border-white/10 pb-6">
+          <h2 className="text-4xl font-serif">{t.addFood}</h2>
+          <button onClick={onClose} className="p-2 border border-white/10 hover:bg-white/5"><X size={24} /></button>
+        </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {cart.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center">
-                  <ShoppingBag size={48} className="text-brand-beige/20 mb-4" />
-                  <p className="text-brand-beige/40 italic">Your cart is empty</p>
-                  <button 
-                    onClick={onClose}
-                    className="mt-6 text-brand-red uppercase tracking-widest text-sm"
-                  >
-                    Start Ordering
-                  </button>
+        <div className="space-y-8">
+          <div className="space-y-4">
+            <input 
+              placeholder={t.foodName}
+              value={newItem.name}
+              onChange={e => setNewItem({...newItem, name: e.target.value})}
+              className="w-full bg-brand-gray border border-white/10 px-4 py-3 focus:outline-none focus:border-brand-red"
+            />
+            <input 
+              type="number"
+              placeholder={t.price}
+              value={newItem.price || ''}
+              onChange={e => setNewItem({...newItem, price: Number(e.target.value)})}
+              className="w-full bg-brand-gray border border-white/10 px-4 py-3 focus:outline-none focus:border-brand-red"
+            />
+            <select 
+              value={newItem.category}
+              onChange={e => setNewItem({...newItem, category: e.target.value as any})}
+              className="w-full bg-brand-gray border border-white/10 px-4 py-3 focus:outline-none focus:border-brand-red"
+            >
+              <option>Sushi Rolls</option>
+              <option>Sashimi</option>
+              <option>Platters</option>
+              <option>Drinks</option>
+            </select>
+            <textarea 
+              placeholder={t.description}
+              value={newItem.description}
+              onChange={e => setNewItem({...newItem, description: e.target.value})}
+              className="w-full bg-brand-gray border border-white/10 px-4 py-3 h-32 focus:outline-none focus:border-brand-red"
+            />
+            <div className="border-2 border-dashed border-white/10 p-8 text-center hover:border-brand-red transition-colors cursor-pointer relative overflow-hidden group">
+              <input 
+                type="file" 
+                onChange={handleFileChange}
+                className="absolute inset-0 opacity-0 cursor-pointer z-10"
+              />
+              {newItem.image ? (
+                <div className="relative h-40 w-full">
+                  <img src={newItem.image} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Upload className="text-white" />
+                  </div>
                 </div>
               ) : (
-                cart.map((item) => (
-                  <div key={item.id} className="flex gap-4 group">
-                    <div className="w-20 h-20 flex-shrink-0">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between mb-1">
-                        <h4 className="font-serif">{item.name}</h4>
-                        <button 
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-brand-beige/20 hover:text-brand-red transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      <p className="text-brand-red text-sm mb-3">{item.price} MAD</p>
-                      <div className="flex items-center gap-3">
-                        <button 
-                          onClick={() => updateQuantity(item.id, -1)}
-                          className="w-6 h-6 border border-white/10 flex items-center justify-center hover:bg-white/5"
-                        >
-                          <Minus size={12} />
-                        </button>
-                        <span className="text-sm w-4 text-center">{item.quantity}</span>
-                        <button 
-                          onClick={() => updateQuantity(item.id, 1)}
-                          className="w-6 h-6 border border-white/10 flex items-center justify-center hover:bg-white/5"
-                        >
-                          <Plus size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
+                <>
+                  <Upload className="mx-auto mb-2 text-brand-beige/20" />
+                  <p className="text-xs text-brand-beige/40 uppercase tracking-widest">{t.uploadPhoto}</p>
+                </>
               )}
             </div>
-
-            {cart.length > 0 && (
-              <div className="p-6 border-t border-white/10 bg-brand-gray">
-                <div className="flex justify-between items-center mb-6">
-                  <span className="text-brand-beige/60 uppercase tracking-widest text-xs">Subtotal</span>
-                  <span className="text-2xl font-serif">{total} MAD</span>
-                </div>
-                <button className="w-full bg-brand-red text-white py-4 uppercase tracking-[0.2em] text-sm hover:bg-red-700 transition-colors">
-                  Checkout Now
-                </button>
-              </div>
-            )}
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+            <button 
+              onClick={handleAddFood}
+              className="w-full bg-brand-red text-white py-4 uppercase tracking-widest text-sm"
+            >
+              {t.save}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
 // --- Main App ---
 
 export default function App() {
+  const [lang, setLang] = useState<Language>('en');
   const [activePage, setActivePage] = useState('home');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [showMenuManager, setShowMenuManager] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(INITIAL_MENU_ITEMS);
+  const [logo, setLogo] = useState<string>('');
+  
+  const t = translations[lang];
+  const isRTL = lang === 'ar';
+
+  useEffect(() => {
+    const savedLogo = localStorage.getItem('okasan_logo');
+    const savedMenu = localStorage.getItem('okasan_menu');
+    if (savedLogo) setLogo(savedLogo);
+    if (savedMenu) setMenuItems(JSON.parse(savedMenu));
+  }, []);
 
   const addToCart = (item: MenuItem) => {
     setCart(prev => {
@@ -771,18 +633,32 @@ export default function App() {
     setIsCartOpen(true);
   };
 
-  const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(item => {
-      if (item.id === id) {
-        const newQty = Math.max(1, item.quantity + delta);
-        return { ...item, quantity: newQty };
-      }
-      return item;
-    }));
+  const handleAdminLogin = (u: string, p: string) => {
+    if (u === 'sam' && p === 'sam2006') {
+      setIsAdminLoggedIn(true);
+      setIsAdminModalOpen(false);
+    } else {
+      alert('Invalid credentials');
+    }
   };
 
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
+  const addMenuItem = async (item: Omit<MenuItem, 'id'>) => {
+    const newItem = { ...item, id: Date.now().toString() };
+    const updatedMenu = [...menuItems, newItem];
+    setMenuItems(updatedMenu);
+    setHasUnsavedChanges(true);
+  };
+
+  const updateLogo = (url: string) => {
+    setLogo(url);
+    setHasUnsavedChanges(true);
+  };
+
+  const saveAllChanges = () => {
+    localStorage.setItem('okasan_menu', JSON.stringify(menuItems));
+    localStorage.setItem('okasan_logo', logo);
+    setHasUnsavedChanges(false);
+    alert('All changes saved successfully!');
   };
 
   const renderPage = () => {
@@ -790,90 +666,400 @@ export default function App() {
       case 'home':
         return (
           <>
-            <Hero onMenuClick={() => setActivePage('menu')} />
-            <QuickInfo />
-            <FeaturedDishes onAddToCart={addToCart} />
-            <section className="py-24 bg-brand-gray japanese-texture">
-              <div className="max-w-7xl mx-auto px-6 text-center">
-                <h2 className="text-4xl font-serif mb-12">What Our Guests Say</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {REVIEWS.slice(0, 2).map((review) => (
-                    <div key={review.id} className="bg-brand-dark p-10 border border-white/5 text-left">
-                      <div className="flex text-brand-red mb-4">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} size={14} fill={i < review.rating ? "currentColor" : "none"} />
-                        ))}
+            <section className="relative h-screen flex items-center justify-center overflow-hidden">
+              <div className="absolute inset-0 z-0">
+                <img 
+                  src="https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?auto=format&fit=crop&w=1920&q=80" 
+                  alt="Sushi background"
+                  className="w-full h-full object-cover opacity-60"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/20 via-brand-dark/40 to-brand-dark"></div>
+              </div>
+              <div className="relative z-10 text-center px-6">
+                <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+                  <h1 className="text-6xl md:text-8xl font-serif mb-4 tracking-tighter">Okasan Sushi</h1>
+                  <p className="text-xl md:text-2xl font-light tracking-[0.2em] mb-10 text-brand-beige/80 italic">{t.subtitle}</p>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button onClick={() => setActivePage('menu')} className="bg-brand-red hover:bg-red-700 text-white px-10 py-4 tracking-widest uppercase text-sm transition-all">{t.viewMenu}</button>
+                    <button onClick={() => setActivePage('menu')} className="border border-brand-beige hover:bg-brand-beige hover:text-brand-dark text-brand-beige px-10 py-4 tracking-widest uppercase text-sm transition-all">{t.orderNow}</button>
+                  </div>
+                </motion.div>
+              </div>
+            </section>
+            
+            <section className="py-20 bg-brand-gray japanese-texture">
+              <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
+                <div className="flex flex-col items-center text-center">
+                  <div className="flex text-brand-red mb-2">
+                    {[...Array(5)].map((_, i) => <Star key={i} size={20} fill={i < 4 ? "currentColor" : "none"} />)}
+                  </div>
+                  <h3 className="text-xl font-serif mb-1">{t.rating}</h3>
+                  <p className="text-brand-beige/60 text-sm">{t.basedOn}</p>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                  <h3 className="text-xl font-serif mb-1">MAD 100–150</h3>
+                  <p className="text-brand-beige/60 text-sm">{t.priceRange}</p>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                  <h3 className="text-xl font-serif mb-1">{t.fullService}</h3>
+                  <p className="text-brand-beige/60 text-sm">{t.serviceDetails}</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="py-24 bg-brand-dark">
+              <div className="max-w-7xl mx-auto px-6">
+                <h2 className="text-4xl md:text-5xl font-serif mb-16">{t.recommendations}</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                  {menuItems.slice(0, 3).map((item, idx) => (
+                    <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }} viewport={{ once: true }} className="group">
+                      <div className="overflow-hidden aspect-[4/5] mb-6 relative">
+                        <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                        <div className="absolute inset-0 bg-brand-dark/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button onClick={() => addToCart(item)} className="bg-brand-red text-white px-6 py-3 tracking-widest uppercase text-xs">{t.addToCart}</button>
+                        </div>
                       </div>
-                      <p className="text-brand-beige/80 italic mb-6">"{review.comment}"</p>
-                      <span className="font-serif">{review.name}</span>
-                    </div>
+                      <h3 className="text-2xl font-serif mb-2">{item.name}</h3>
+                      <p className="text-brand-beige/60 text-sm mb-4 line-clamp-2">{item.description}</p>
+                      <span className="text-brand-red font-medium">{item.price} MAD</span>
+                    </motion.div>
                   ))}
                 </div>
-                <button 
-                  onClick={() => setActivePage('reviews')}
-                  className="mt-12 text-brand-red uppercase tracking-widest text-sm border-b border-brand-red pb-1"
-                >
-                  View All Reviews
-                </button>
               </div>
             </section>
           </>
         );
       case 'menu':
-        return <MenuSection onAddToCart={addToCart} />;
+        return (
+          <section className="py-32 bg-brand-dark min-h-screen">
+            <div className="max-w-7xl mx-auto px-6">
+              <div className="text-center mb-20">
+                <h2 className="text-5xl md:text-6xl font-serif mb-6">{t.ourMenu}</h2>
+                <p className="text-brand-beige/60 max-w-2xl mx-auto italic">{t.menuDesc}</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-12">
+                {menuItems.map((item) => (
+                  <div key={item.id} className="flex justify-between items-start group">
+                    <div className="w-20 h-20 flex-shrink-0 mr-4 overflow-hidden">
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 pr-4">
+                      <div className="flex items-baseline justify-between mb-2">
+                        <h4 className="text-xl font-serif group-hover:text-brand-red transition-colors">{item.name}</h4>
+                        <div className="flex-1 border-b border-dotted border-white/20 mx-4"></div>
+                        <span className="text-brand-red">{item.price} MAD</span>
+                      </div>
+                      <p className="text-brand-beige/50 text-sm italic">{item.description}</p>
+                    </div>
+                    <button onClick={() => addToCart(item)} className="p-2 border border-white/10 hover:bg-brand-red transition-all"><Plus size={16} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        );
       case 'about':
-        return <AboutSection />;
+        return (
+          <section className="py-32 bg-brand-gray japanese-texture">
+            <div className="max-w-7xl mx-auto px-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                <div>
+                  <h2 className="text-5xl md:text-6xl font-serif mb-8">{t.artOfSushi}</h2>
+                  <div className="space-y-6 text-brand-beige/80 leading-relaxed">
+                    <p>{t.aboutText1}</p>
+                    <p>{t.aboutText2}</p>
+                    <div className="pt-6">
+                      <h3 className="text-2xl font-serif mb-4 text-brand-red">{t.theExperience}</h3>
+                      <p>{t.expText}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="relative">
+                  <img src="https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1000&q=80" alt="Chef" className="w-full aspect-square object-cover grayscale" />
+                  <div className="absolute -bottom-6 -left-6 bg-brand-red p-8 hidden md:block">
+                    <p className="text-4xl font-serif text-white italic">"{t.quote}"</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        );
       case 'reviews':
-        return <ReviewsSection />;
+        return (
+          <section className="py-32 bg-brand-dark">
+            <div className="max-w-7xl mx-auto px-6">
+              <div className="text-center mb-20">
+                <div className="flex justify-center text-brand-red mb-4">
+                  {[...Array(5)].map((_, i) => <Star key={i} size={32} fill={i < 4 ? "currentColor" : "none"} />)}
+                </div>
+                <h2 className="text-5xl font-serif mb-2">4.5 / 5</h2>
+                <p className="text-brand-beige/60 uppercase tracking-widest text-sm">{t.guestExp}</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {REVIEWS.map((review) => (
+                  <div key={review.id} className="bg-brand-gray p-10 border border-white/5">
+                    <div className="flex text-brand-red mb-6">
+                      {[...Array(5)].map((_, i) => <Star key={i} size={14} fill={i < review.rating ? "currentColor" : "none"} />)}
+                    </div>
+                    <p className="text-brand-beige/80 italic mb-8">"{review.comment}"</p>
+                    <div className="flex justify-between items-center border-t border-white/10 pt-6">
+                      <span className="font-serif text-lg">{review.name}</span>
+                      <span className="text-xs text-brand-beige/40">{review.date}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        );
       case 'contact':
-        return <ContactSection />;
+        return (
+          <section className="py-32 bg-brand-dark japanese-texture">
+            <div className="max-w-7xl mx-auto px-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
+                <div className={isRTL ? 'text-right' : 'text-left'}>
+                  <h2 className="text-5xl font-serif mb-12">{t.visitUs}</h2>
+                  <div className="space-y-10">
+                    <div className="flex gap-6">
+                      <div className="w-12 h-12 bg-brand-red flex items-center justify-center flex-shrink-0"><MapPin size={24} className="text-white" /></div>
+                      <div>
+                        <h4 className="text-xl font-serif mb-2">{t.address}</h4>
+                        <p className="text-brand-beige/60">3, Res, mag 3 Pass. Salima,<br />Sala Al Jadida 11100, Morocco</p>
+                        <button className="text-brand-red text-sm uppercase tracking-widest mt-4 flex items-center gap-2">{t.getDirections} <ChevronRight size={16} /></button>
+                      </div>
+                    </div>
+                    <div className="flex gap-6">
+                      <div className="w-12 h-12 bg-brand-red flex items-center justify-center flex-shrink-0"><Phone size={24} className="text-white" /></div>
+                      <div>
+                        <h4 className="text-xl font-serif mb-2">{t.reservations}</h4>
+                        <p className="text-brand-beige/60">05 37 53 63 81</p>
+                        <button className="text-brand-red text-sm uppercase tracking-widest mt-4 flex items-center gap-2">{t.callNow} <ChevronRight size={16} /></button>
+                      </div>
+                    </div>
+                    <div className="flex gap-6">
+                      <div className="w-12 h-12 bg-brand-red flex items-center justify-center flex-shrink-0"><Clock size={24} className="text-white" /></div>
+                      <div>
+                        <h4 className="text-xl font-serif mb-2">{t.hours}</h4>
+                        <p className="text-brand-beige/60">Monday – Sunday<br />12:00 PM – 01:00 AM</p>
+                        <p className="text-brand-red text-xs mt-2 uppercase tracking-widest">{t.openNow}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="h-[500px] glass-morphism p-2">
+                  <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3308.218567117185!2d-6.7538888!3d33.9861111!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xda7694f4f4f4f4f%3A0x4f4f4f4f4f4f4f4f!2sSala%20Al%20Jadida!5e0!3m2!1sen!2sma!4v1620000000000!5m2!1sen!2sma" className="w-full h-full border-0 grayscale" allowFullScreen={true} loading="lazy"></iframe>
+                </div>
+              </div>
+            </div>
+          </section>
+        );
       default:
-        return <Hero onMenuClick={() => setActivePage('menu')} />;
+        return null;
     }
   };
 
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Instant preview
+    const previewUrl = URL.createObjectURL(file);
+    setLogo(previewUrl);
+    
+    // Background upload
+    const logoUrl = await uploadToCloudinary(file);
+    updateLogo(logoUrl);
+  };
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={`min-h-screen flex flex-col ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+      <input 
+        type="file" 
+        ref={logoInputRef} 
+        className="hidden" 
+        accept="image/*"
+        onChange={handleLogoUpload}
+      />
       <Navbar 
         activePage={activePage} 
         setActivePage={setActivePage} 
         cartCount={cart.reduce((s, i) => s + i.quantity, 0)}
         toggleCart={() => setIsCartOpen(true)}
+        lang={lang}
+        setLang={setLang}
+        logo={logo}
+        t={t}
+        isAdmin={isAdminLoggedIn}
+        onLogoClick={() => logoInputRef.current?.click()}
       />
       
-      <main className="flex-grow">
+      <main className="flex-grow pt-20">
         <AnimatePresence mode="wait">
-          <motion.div
-            key={activePage}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-          >
+          <motion.div key={activePage + lang} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }}>
             {renderPage()}
           </motion.div>
         </AnimatePresence>
       </main>
 
-      <Footer setActivePage={setActivePage} />
+      <footer className="bg-brand-gray pt-20 pb-10 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
+            <div>
+              <div 
+                className={`flex items-center gap-4 mb-6 cursor-pointer group`}
+                onClick={() => isAdminLoggedIn ? logoInputRef.current?.click() : setIsAdminModalOpen(true)}
+                title={isAdminLoggedIn ? 'Click to change logo' : 'Admin Login'}
+              >
+                <div className="w-10 h-10 rounded-full border border-white/20 overflow-hidden bg-brand-dark flex items-center justify-center relative">
+                  {logo ? <img src={logo} alt="Logo" className="w-full h-full object-cover" /> : <ImageIcon size={16} className="text-brand-beige/20" />}
+                  {isAdminLoggedIn && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Upload size={12} className="text-white" />
+                    </div>
+                  )}
+                </div>
+                <span className="text-2xl font-serif font-bold text-brand-red tracking-widest">OKASAN</span>
+              </div>
+              {isAdminLoggedIn && (
+                <div className="flex flex-col gap-2 mb-8">
+                  <button 
+                    onClick={() => setShowMenuManager(true)}
+                    className="text-xs uppercase tracking-widest text-brand-red border border-brand-red px-4 py-2 hover:bg-brand-red hover:text-white transition-all"
+                  >
+                    Manage Menu
+                  </button>
+                  <button 
+                    onClick={() => { setIsAdminLoggedIn(false); setShowMenuManager(false); }}
+                    className="text-[10px] uppercase tracking-widest text-brand-beige/30 hover:text-brand-red transition-colors text-left"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+              <p className="text-brand-beige/50 text-sm leading-relaxed mb-8">{t.footerDesc}</p>
+              <div className="flex gap-4">
+                <a href="https://www.instagram.com/okasan.sushi_?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" rel="noreferrer" className="w-10 h-10 border border-white/10 flex items-center justify-center hover:bg-brand-red transition-all"><Instagram size={18} /></a>
+                <a href="https://web.facebook.com/profile.php?id=61582878461534" target="_blank" rel="noreferrer" className="w-10 h-10 border border-white/10 flex items-center justify-center hover:bg-brand-red transition-all"><Facebook size={18} /></a>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-lg font-serif mb-6">{t.quickLinks}</h4>
+              <ul className="space-y-4 text-sm text-brand-beige/50">
+                {['home', 'menu', 'about', 'reviews', 'contact'].map(id => (
+                  <li key={id}><button onClick={() => setActivePage(id)} className="hover:text-brand-red transition-colors capitalize">{t[id as keyof typeof t]}</button></li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-lg font-serif mb-6">{t.contact}</h4>
+              <ul className="space-y-4 text-sm text-brand-beige/50">
+                <li className="flex items-start gap-3"><MapPin size={16} className="text-brand-red mt-1" /><span>3, Res, mag 3 Pass. Salima,<br />Sala Al Jadida 11100</span></li>
+                <li className="flex items-center gap-3"><Phone size={16} className="text-brand-red" /><span>05 37 53 63 81</span></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-lg font-serif mb-6">{t.newsletter}</h4>
+              <p className="text-brand-beige/50 text-sm mb-4">{t.newsDesc}</p>
+              <div className="flex">
+                <input type="email" placeholder={t.yourEmail} className="bg-brand-dark border border-white/10 px-4 py-2 text-sm w-full focus:outline-none focus:border-brand-red" />
+                <button className="bg-brand-red px-4 py-2 text-white"><ChevronRight size={20} /></button>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-white/5 pt-10 text-center text-[10px] text-brand-beige/30 uppercase tracking-[0.3em]">
+            © 2026 Okasan Sushi. {t.rights}
+          </div>
+        </div>
+      </footer>
 
       <CartDrawer 
         isOpen={isCartOpen} 
         onClose={() => setIsCartOpen(false)} 
         cart={cart}
-        updateQuantity={updateQuantity}
-        removeFromCart={removeFromCart}
+        updateQuantity={(id, d) => setCart(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(1, i.quantity + d) } : i))}
+        removeFromCart={id => setCart(prev => prev.filter(i => i.id !== id))}
       />
 
-      {/* Global Order Now Button (Mobile) */}
-      <div className="fixed bottom-6 right-6 z-40 md:hidden">
-        <button 
-          onClick={() => setActivePage('menu')}
-          className="bg-brand-red text-white p-4 rounded-full shadow-2xl flex items-center justify-center"
-        >
-          <ShoppingBag size={24} />
-        </button>
-      </div>
+      <AdminModal 
+        isOpen={isAdminModalOpen} 
+        onClose={() => setIsAdminModalOpen(false)} 
+        onLogin={handleAdminLogin} 
+      />
+
+      {showMenuManager && (
+        <AdminDashboard 
+          onClose={() => setShowMenuManager(false)} 
+          onAddMenuItem={addMenuItem}
+          t={t}
+        />
+      )}
+      {isAdminLoggedIn && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex gap-4">
+          <motion.button 
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            onClick={() => { setIsAdminLoggedIn(false); setShowMenuManager(false); }}
+            className="bg-brand-dark border border-white/20 text-white px-8 py-3 rounded-full uppercase tracking-widest text-xs hover:bg-white/5 transition-all flex items-center gap-2 shadow-2xl"
+          >
+            <X size={14} /> Leave Admin Mode
+          </motion.button>
+          
+          {hasUnsavedChanges && (
+            <motion.button 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              onClick={saveAllChanges}
+              className="bg-brand-red text-white px-10 py-3 rounded-full uppercase tracking-widest text-xs hover:bg-red-700 transition-all flex items-center gap-2 shadow-2xl font-bold"
+            >
+              <Upload size={14} /> Save All Changes
+            </motion.button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
+const CartDrawer = ({ isOpen, onClose, cart, updateQuantity, removeFromCart }: any) => {
+  const total = cart.reduce((sum: any, item: any) => sum + (item.price * item.quantity), 0);
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]" />
+          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 h-full w-full max-w-md bg-brand-dark z-[120] flex flex-col">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center">
+              <h3 className="text-2xl font-serif">Your Order</h3>
+              <button onClick={onClose}><X size={24} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {cart.length === 0 ? <p className="text-center text-brand-beige/40 italic mt-20">Your cart is empty</p> : cart.map((item: any) => (
+                <div key={item.id} className="flex gap-4">
+                  <img src={item.image} className="w-16 h-16 object-cover" />
+                  <div className="flex-1">
+                    <div className="flex justify-between"><h4 className="font-serif">{item.name}</h4><button onClick={() => removeFromCart(item.id)}><Trash2 size={14} /></button></div>
+                    <p className="text-brand-red text-sm">{item.price} MAD</p>
+                    <div className="flex items-center gap-3 mt-2">
+                      <button onClick={() => updateQuantity(item.id, -1)} className="w-6 h-6 border border-white/10 flex items-center justify-center"><Minus size={12} /></button>
+                      <span className="text-sm">{item.quantity}</span>
+                      <button onClick={() => updateQuantity(item.id, 1)} className="w-6 h-6 border border-white/10 flex items-center justify-center"><Plus size={12} /></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {cart.length > 0 && (
+              <div className="p-6 border-t border-white/10 bg-brand-gray">
+                <div className="flex justify-between mb-6"><span>Subtotal</span><span className="text-2xl font-serif">{total} MAD</span></div>
+                <button className="w-full bg-brand-red text-white py-4 uppercase tracking-widest text-sm">Checkout Now</button>
+              </div>
+            )}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
