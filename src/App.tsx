@@ -597,7 +597,7 @@ const AdminDashboard = ({
   onDeleteMenuItem: (id: string) => Promise<void>,
   onUpdateSetting: (key: string, value: string) => Promise<void>,
   menuItems: MenuItem[],
-  settings: { logo: string, aboutImage: string, statsBg: string, aboutBg: string, footerBg: string, quoteImage: string },
+  settings: { logo: string, aboutImage: string, statsBg: string, aboutBg: string, footerBg: string, quoteImage: string, contactBg: string },
   t: any
 }) => {
   const [activeTab, setActiveTab] = useState<'menu' | 'appearance'>('menu');
@@ -779,6 +779,12 @@ const AdminDashboard = ({
               onUpload={(url) => onUpdateSetting('quoteImage', url)} 
               t={t} 
             />
+            <ImageUploadField 
+              label="Contact Section Background" 
+              value={settings.contactBg} 
+              onUpload={(url) => onUpdateSetting('contactBg', url)} 
+              t={t} 
+            />
           </div>
         )}
       </div>
@@ -837,6 +843,7 @@ export default function App() {
   const [aboutBg, setAboutBg] = useState<string>('');
   const [footerBg, setFooterBg] = useState<string>('');
   const [quoteImage, setQuoteImage] = useState<string>('');
+  const [contactBg, setContactBg] = useState<string>('');
   
   const t = translations[lang];
   const isRTL = lang === 'ar';
@@ -863,6 +870,7 @@ export default function App() {
         setAboutBg(data.aboutBg || '');
         setFooterBg(data.footerBg || '');
         setQuoteImage(data.quoteImage || '');
+        setContactBg(data.contactBg || '');
       }
     });
 
@@ -1219,8 +1227,12 @@ export default function App() {
         );
       case 'contact':
         return (
-          <section className="py-32 bg-brand-dark japanese-texture">
-            <div className="max-w-7xl mx-auto px-6">
+          <section 
+            className="py-32 bg-brand-dark japanese-texture relative overflow-hidden"
+            style={contactBg ? { backgroundImage: `url(${contactBg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+          >
+            {contactBg && <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-[2px]" />}
+            <div className="max-w-7xl mx-auto px-6 relative z-10">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
                 <div className={isRTL ? 'text-right' : 'text-left'}>
                   <h2 className="text-5xl font-serif mb-12">{t.visitUs}</h2>
@@ -1417,7 +1429,7 @@ export default function App() {
           onDeleteMenuItem={deleteMenuItem}
           onUpdateSetting={updateSetting}
           menuItems={menuItems}
-          settings={{ logo, aboutImage, statsBg, aboutBg, footerBg, quoteImage }}
+          settings={{ logo, aboutImage, statsBg, aboutBg, footerBg, quoteImage, contactBg }}
           t={t}
         />
       )}

@@ -39,14 +39,15 @@ service cloud.firestore {
     }
 
     function isValidSettings(data) {
-      let allowedFields = ['logo', 'aboutImage', 'statsBg', 'aboutBg', 'footerBg', 'quoteImage'];
+      let allowedFields = ['logo', 'aboutImage', 'statsBg', 'aboutBg', 'footerBg', 'quoteImage', 'contactBg'];
       return data.keys().hasOnly(allowedFields) &&
              (!('logo' in data) || (isValidUrl(data.logo) && data.logo.size() < 1000)) &&
              (!('aboutImage' in data) || (isValidUrl(data.aboutImage) && data.aboutImage.size() < 1000)) &&
              (!('statsBg' in data) || (isValidUrl(data.statsBg) && data.statsBg.size() < 1000)) &&
              (!('aboutBg' in data) || (isValidUrl(data.aboutBg) && data.aboutBg.size() < 1000)) &&
              (!('footerBg' in data) || (isValidUrl(data.footerBg) && data.footerBg.size() < 1000)) &&
-             (!('quoteImage' in data) || (isValidUrl(data.quoteImage) && data.quoteImage.size() < 1000));
+             (!('quoteImage' in data) || (isValidUrl(data.quoteImage) && data.quoteImage.size() < 1000)) &&
+             (!('contactBg' in data) || (isValidUrl(data.contactBg) && data.contactBg.size() < 1000));
     }
 
     function isValidMenuItem(data) {

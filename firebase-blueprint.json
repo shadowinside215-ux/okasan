@@ -28,6 +28,10 @@
         "quoteImage": {
           "type": "string",
           "description": "The image displayed with the quality quote."
+        },
+        "contactBg": {
+          "type": "string",
+          "description": "Background image for the contact section."
         }
       },
       "required": ["logo"]
