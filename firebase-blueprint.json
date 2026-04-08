@@ -2,12 +2,28 @@
   "entities": {
     "Settings": {
       "title": "Settings",
-      "description": "Global website settings like logo.",
+      "description": "Global website settings like logo and section images.",
       "type": "object",
       "properties": {
         "logo": {
           "type": "string",
           "description": "The URL of the website logo."
+        },
+        "aboutImage": {
+          "type": "string",
+          "description": "The main image in the About section."
+        },
+        "statsBg": {
+          "type": "string",
+          "description": "Background image for the stats section."
+        },
+        "aboutBg": {
+          "type": "string",
+          "description": "Background image for the about section."
+        },
+        "footerBg": {
+          "type": "string",
+          "description": "Background image for the footer."
         }
       },
       "required": ["logo"]

@@ -12,8 +12,13 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
   body {
-    @apply bg-brand-dark text-brand-beige font-sans antialiased;
+    @apply bg-brand-dark text-brand-beige font-sans antialiased selection:bg-brand-red selection:text-white;
+    overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -25,12 +30,32 @@
   background-image: url("https://www.transparenttextures.com/patterns/paper-fibers.png");
 }
 
+.grain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+  background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+}
+
 .glass-morphism {
   @apply bg-black/40 backdrop-blur-md border border-white/10;
 }
 
+.text-reveal {
+  @apply overflow-hidden inline-block;
+}
+
+.text-reveal span {
+  @apply inline-block;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {

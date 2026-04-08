@@ -343,9 +343,11 @@ const Navbar = ({ activePage, setActivePage, cartCount, toggleCart, lang, setLan
   ];
 
   return (
-    <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-brand-dark/90 backdrop-blur-md py-3 shadow-lg' : 'bg-transparent py-6'}`}>
+    <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${isScrolled ? 'bg-brand-dark/95 backdrop-blur-xl py-3 shadow-2xl' : 'bg-transparent py-8'}`}>
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-        <div 
+        <motion.div 
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           className={`flex items-center gap-4 ${isAdmin ? 'cursor-pointer ring-2 ring-brand-red ring-offset-2 ring-offset-brand-dark' : 'cursor-pointer'}`}
           onClick={() => isAdmin ? onLogoClick() : setActivePage('home')}
           title={isAdmin ? 'Click to change logo' : ''}
@@ -366,7 +368,7 @@ const Navbar = ({ activePage, setActivePage, cartCount, toggleCart, lang, setLan
             <span className="text-xl md:text-2xl font-serif font-bold text-brand-red tracking-widest leading-none">OKASAN</span>
             <span className="text-[10px] font-light tracking-[0.4em] text-brand-beige/60">SUSHI</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
@@ -374,9 +376,10 @@ const Navbar = ({ activePage, setActivePage, cartCount, toggleCart, lang, setLan
             <button
               key={link.id}
               onClick={() => setActivePage(link.id)}
-              className={`text-xs uppercase tracking-widest transition-colors hover:text-brand-red ${activePage === link.id ? 'text-brand-red' : 'text-brand-beige'}`}
+              className={`text-xs uppercase tracking-widest transition-all relative group py-2 ${activePage === link.id ? 'text-brand-red' : 'text-brand-beige'}`}
             >
               {link.name}
+              <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-brand-red transition-transform duration-300 origin-left ${activePage === link.id ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
             </button>
           ))}
           
@@ -521,19 +524,83 @@ const AdminModal = ({ isOpen, onClose, onLogin, onGoogleLogin }: { isOpen: boole
   );
 };
 
+const ImageUploadField = ({ 
+  label, 
+  value, 
+  onUpload, 
+  t 
+}: { 
+  label: string, 
+  value: string, 
+  onUpload: (url: string) => Promise<void>,
+  t: any
+}) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const url = await uploadToCloudinary(file);
+      await onUpload(url);
+    } catch (err) {
+      console.error("Upload failed", err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs uppercase tracking-widest text-brand-beige/40">{label}</label>
+      <div 
+        onClick={() => inputRef.current?.click()}
+        className="relative h-32 w-full bg-brand-gray border border-white/10 flex items-center justify-center cursor-pointer group overflow-hidden"
+      >
+        <input type="file" ref={inputRef} onChange={handleChange} className="hidden" accept="image/*" />
+        {value ? (
+          <>
+            <img src={value} alt={label} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Upload size={20} className="text-white" />
+            </div>
+          </>
+        ) : (
+          <div className="text-center">
+            <ImageIcon size={24} className="mx-auto mb-2 text-brand-beige/20" />
+            <span className="text-[10px] uppercase tracking-widest text-brand-beige/40">{isUploading ? 'Uploading...' : 'Click to Upload'}</span>
+          </div>
+        )}
+        {isUploading && (
+          <div className="absolute inset-0 bg-brand-dark/60 flex items-center justify-center">
+            <div className="w-6 h-6 border-2 border-brand-red border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const AdminDashboard = ({ 
   onClose, 
   onAddMenuItem,
   onDeleteMenuItem,
+  onUpdateSetting,
   menuItems,
+  settings,
   t 
 }: { 
   onClose: () => void, 
   onAddMenuItem: (item: Omit<MenuItem, 'id'>) => Promise<void>,
   onDeleteMenuItem: (id: string) => Promise<void>,
+  onUpdateSetting: (key: string, value: string) => Promise<void>,
   menuItems: MenuItem[],
+  settings: { logo: string, aboutImage: string, statsBg: string, aboutBg: string, footerBg: string },
   t: any
 }) => {
+  const [activeTab, setActiveTab] = useState<'menu' | 'appearance'>('menu');
   const [newItem, setNewItem] = useState({ name: '', price: 0, description: '', category: 'Sushi Rolls' as any, image: '' });
   const [isUploading, setIsUploading] = useState(false);
 
@@ -568,97 +635,180 @@ const AdminDashboard = ({
 
   return (
     <div className="fixed inset-0 z-[100] bg-brand-dark/95 backdrop-blur-lg overflow-y-auto p-6 md:p-12">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-12 border-b border-white/10 pb-6">
-          <h2 className="text-4xl font-serif">{t.addFood}</h2>
+          <div className="flex gap-8">
+            <button 
+              onClick={() => setActiveTab('menu')}
+              className={`text-2xl md:text-4xl font-serif transition-colors ${activeTab === 'menu' ? 'text-white' : 'text-white/20 hover:text-white/40'}`}
+            >
+              Menu Manager
+            </button>
+            <button 
+              onClick={() => setActiveTab('appearance')}
+              className={`text-2xl md:text-4xl font-serif transition-colors ${activeTab === 'appearance' ? 'text-white' : 'text-white/20 hover:text-white/40'}`}
+            >
+              Site Appearance
+            </button>
+          </div>
           <button onClick={onClose} className="p-2 border border-white/10 hover:bg-white/5"><X size={24} /></button>
         </div>
 
-        <div className="space-y-8">
-          <div className="space-y-4">
-            <input 
-              placeholder={t.foodName}
-              value={newItem.name}
-              onChange={e => setNewItem({...newItem, name: e.target.value})}
-              className="w-full bg-brand-gray border border-white/10 px-4 py-3 focus:outline-none focus:border-brand-red"
-            />
-            <input 
-              type="number"
-              placeholder={t.price}
-              value={newItem.price || ''}
-              onChange={e => setNewItem({...newItem, price: Number(e.target.value)})}
-              className="w-full bg-brand-gray border border-white/10 px-4 py-3 focus:outline-none focus:border-brand-red"
-            />
-            <select 
-              value={newItem.category}
-              onChange={e => setNewItem({...newItem, category: e.target.value as any})}
-              className="w-full bg-brand-gray border border-white/10 px-4 py-3 focus:outline-none focus:border-brand-red"
-            >
-              <option>Sushi Rolls</option>
-              <option>Sashimi</option>
-              <option>Platters</option>
-              <option>Drinks</option>
-            </select>
-            <textarea 
-              placeholder={t.description}
-              value={newItem.description}
-              onChange={e => setNewItem({...newItem, description: e.target.value})}
-              className="w-full bg-brand-gray border border-white/10 px-4 py-3 h-32 focus:outline-none focus:border-brand-red"
-            />
-            <div className="border-2 border-dashed border-white/10 p-8 text-center hover:border-brand-red transition-colors cursor-pointer relative overflow-hidden group">
-              <input 
-                type="file" 
-                onChange={handleFileChange}
-                className="absolute inset-0 opacity-0 cursor-pointer z-10"
-              />
-              {newItem.image ? (
-                <div className="relative h-40 w-full">
-                  <img src={newItem.image} alt="Preview" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Upload className="text-white" />
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <Upload className="mx-auto mb-2 text-brand-beige/20" />
-                  <p className="text-xs text-brand-beige/40 uppercase tracking-widest">{t.uploadPhoto}</p>
-                </>
-              )}
-            </div>
-            <button 
-              onClick={handleAddFood}
-              disabled={isUploading}
-              className="w-full bg-brand-red hover:bg-red-700 text-white py-4 uppercase tracking-widest text-sm font-bold transition-all disabled:opacity-50"
-            >
-              {isUploading ? 'Uploading Image...' : t.addFood}
-            </button>
-          </div>
-
-          <div className="mt-12">
-            <h3 className="text-2xl font-serif mb-6 border-b border-white/10 pb-4">Current Menu Items</h3>
-            <div className="grid grid-cols-1 gap-4">
-              {menuItems.map(item => (
-                <div key={item.id} className="flex items-center justify-between bg-brand-gray p-4 border border-white/5">
-                  <div className="flex items-center gap-4">
-                    <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-xs text-brand-beige/40">{item.category} • {item.price} MAD</p>
+        {activeTab === 'menu' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="space-y-8">
+              <h3 className="text-xl font-serif border-b border-white/5 pb-4">{t.addFood}</h3>
+              <div className="space-y-4">
+                <input 
+                  placeholder={t.foodName}
+                  value={newItem.name}
+                  onChange={e => setNewItem({...newItem, name: e.target.value})}
+                  className="w-full bg-brand-gray border border-white/10 px-4 py-3 focus:outline-none focus:border-brand-red"
+                />
+                <input 
+                  type="number"
+                  placeholder={t.price}
+                  value={newItem.price || ''}
+                  onChange={e => setNewItem({...newItem, price: Number(e.target.value)})}
+                  className="w-full bg-brand-gray border border-white/10 px-4 py-3 focus:outline-none focus:border-brand-red"
+                />
+                <select 
+                  value={newItem.category}
+                  onChange={e => setNewItem({...newItem, category: e.target.value as any})}
+                  className="w-full bg-brand-gray border border-white/10 px-4 py-3 focus:outline-none focus:border-brand-red"
+                >
+                  <option>Sushi Rolls</option>
+                  <option>Sashimi</option>
+                  <option>Platters</option>
+                  <option>Drinks</option>
+                </select>
+                <textarea 
+                  placeholder={t.description}
+                  value={newItem.description}
+                  onChange={e => setNewItem({...newItem, description: e.target.value})}
+                  className="w-full bg-brand-gray border border-white/10 px-4 py-3 h-32 focus:outline-none focus:border-brand-red"
+                />
+                <div className="border-2 border-dashed border-white/10 p-8 text-center hover:border-brand-red transition-colors cursor-pointer relative overflow-hidden group">
+                  <input 
+                    type="file" 
+                    onChange={handleFileChange}
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                  />
+                  {newItem.image ? (
+                    <div className="relative h-40 w-full">
+                      <img src={newItem.image} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Upload className="text-white" />
+                      </div>
                     </div>
-                  </div>
-                  <button 
-                    onClick={() => onDeleteMenuItem(item.id)}
-                    className="p-2 text-brand-beige/30 hover:text-brand-red transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  ) : (
+                    <>
+                      <Upload className="mx-auto mb-2 text-brand-beige/20" />
+                      <p className="text-xs text-brand-beige/40 uppercase tracking-widest">{t.uploadPhoto}</p>
+                    </>
+                  )}
                 </div>
-              ))}
+                <button 
+                  onClick={handleAddFood}
+                  disabled={isUploading}
+                  className="w-full bg-brand-red hover:bg-red-700 text-white py-4 uppercase tracking-widest text-sm font-bold transition-all disabled:opacity-50"
+                >
+                  {isUploading ? 'Uploading Image...' : t.addFood}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-serif border-b border-white/5 pb-4 mb-6">Current Menu Items</h3>
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                {menuItems.map(item => (
+                  <div key={item.id} className="flex items-center justify-between bg-brand-gray p-4 border border-white/5">
+                    <div className="flex items-center gap-4">
+                      <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-xs text-brand-beige/40">{item.category} • {item.price} MAD</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => onDeleteMenuItem(item.id)}
+                      className="p-2 text-brand-beige/30 hover:text-brand-red transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <ImageUploadField 
+              label="Website Logo" 
+              value={settings.logo} 
+              onUpload={(url) => onUpdateSetting('logo', url)} 
+              t={t} 
+            />
+            <ImageUploadField 
+              label="About Section Image" 
+              value={settings.aboutImage} 
+              onUpload={(url) => onUpdateSetting('aboutImage', url)} 
+              t={t} 
+            />
+            <ImageUploadField 
+              label="Stats Section Background" 
+              value={settings.statsBg} 
+              onUpload={(url) => onUpdateSetting('statsBg', url)} 
+              t={t} 
+            />
+            <ImageUploadField 
+              label="About Section Background" 
+              value={settings.aboutBg} 
+              onUpload={(url) => onUpdateSetting('aboutBg', url)} 
+              t={t} 
+            />
+            <ImageUploadField 
+              label="Footer Background" 
+              value={settings.footerBg} 
+              onUpload={(url) => onUpdateSetting('footerBg', url)} 
+              t={t} 
+            />
+          </div>
+        )}
       </div>
     </div>
+  );
+};
+
+const ScrollToTop = () => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const toggleVisibility = () => {
+      if (window.pageYOffset > 300) {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+      }
+    };
+    window.addEventListener('scroll', toggleVisibility);
+    return () => window.removeEventListener('scroll', toggleVisibility);
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.8, y: 20 }}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-8 right-8 z-40 w-12 h-12 bg-brand-red text-white flex items-center justify-center rounded-full shadow-2xl hover:bg-red-700 transition-colors"
+        >
+          <Plus className="rotate-45" size={24} />
+        </motion.button>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -676,6 +826,10 @@ export default function App() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>(INITIAL_MENU_ITEMS);
   const [logo, setLogo] = useState<string>('');
+  const [aboutImage, setAboutImage] = useState<string>('');
+  const [statsBg, setStatsBg] = useState<string>('');
+  const [aboutBg, setAboutBg] = useState<string>('');
+  const [footerBg, setFooterBg] = useState<string>('');
   
   const t = translations[lang];
   const isRTL = lang === 'ar';
@@ -692,10 +846,15 @@ export default function App() {
       }
     });
 
-    // Listen for logo changes
+    // Listen for logo and other settings changes
     const unsubscribeLogo = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
       if (docSnap.exists()) {
-        setLogo(docSnap.data().logo);
+        const data = docSnap.data();
+        setLogo(data.logo || '');
+        setAboutImage(data.aboutImage || '');
+        setStatsBg(data.statsBg || '');
+        setAboutBg(data.aboutBg || '');
+        setFooterBg(data.footerBg || '');
       }
     });
 
@@ -784,11 +943,20 @@ export default function App() {
   const updateLogo = async (url: string) => {
     try {
       setLogo(url);
-      await setDoc(doc(db, 'settings', 'global'), { logo: url });
+      await setDoc(doc(db, 'settings', 'global'), { logo: url }, { merge: true });
       setHasUnsavedChanges(false);
     } catch (error) {
       console.error("Error updating logo:", error);
       alert("Failed to update logo. Check console for details.");
+    }
+  };
+
+  const updateSetting = async (key: string, value: string) => {
+    try {
+      await setDoc(doc(db, 'settings', 'global'), { [key]: value }, { merge: true });
+    } catch (error) {
+      console.error(`Error updating ${key}:`, error);
+      alert(`Failed to update ${key}.`);
     }
   };
 
@@ -815,19 +983,59 @@ export default function App() {
                 <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/20 via-brand-dark/40 to-brand-dark"></div>
               </div>
               <div className="relative z-10 text-center px-6">
-                <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-                  <h1 className="text-6xl md:text-8xl font-serif mb-4 tracking-tighter">Okasan Sushi</h1>
-                  <p className="text-xl md:text-2xl font-light tracking-[0.2em] mb-10 text-brand-beige/80 italic">{t.subtitle}</p>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <button onClick={() => setActivePage('menu')} className="bg-brand-red hover:bg-red-700 text-white px-10 py-4 tracking-widest uppercase text-sm transition-all">{t.viewMenu}</button>
-                    <button onClick={() => setActivePage('menu')} className="border border-brand-beige hover:bg-brand-beige hover:text-brand-dark text-brand-beige px-10 py-4 tracking-widest uppercase text-sm transition-all">{t.orderNow}</button>
-                  </div>
+                <motion.div 
+                  initial={{ opacity: 0, y: 40 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ duration: 1.2, ease: [0.23, 1, 0.32, 1] }}
+                >
+                  <h1 className="text-6xl md:text-9xl font-serif mb-6 tracking-tighter leading-none">
+                    <span className="text-reveal">
+                      <motion.span
+                        initial={{ y: '100%' }}
+                        animate={{ y: 0 }}
+                        transition={{ duration: 1, delay: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                      >
+                        Okasan Sushi
+                      </motion.span>
+                    </span>
+                  </h1>
+                  <motion.p 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.8 }}
+                    transition={{ duration: 1, delay: 0.8 }}
+                    className="text-xl md:text-2xl font-light tracking-[0.3em] mb-12 text-brand-beige italic"
+                  >
+                    {t.subtitle}
+                  </motion.p>
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 1.2 }}
+                    className="flex flex-col sm:flex-row gap-6 justify-center"
+                  >
+                    <button 
+                      onClick={() => setActivePage('menu')} 
+                      className="bg-brand-red hover:bg-red-700 text-white px-12 py-5 tracking-widest uppercase text-xs transition-all hover:scale-105 active:scale-95 shadow-xl"
+                    >
+                      {t.viewMenu}
+                    </button>
+                    <button 
+                      onClick={() => setActivePage('menu')} 
+                      className="border border-brand-beige hover:bg-brand-beige hover:text-brand-dark text-brand-beige px-12 py-5 tracking-widest uppercase text-xs transition-all hover:scale-105 active:scale-95"
+                    >
+                      {t.orderNow}
+                    </button>
+                  </motion.div>
                 </motion.div>
               </div>
             </section>
             
-            <section className="py-20 bg-brand-gray japanese-texture">
-              <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
+            <section 
+              className="py-20 bg-brand-gray japanese-texture relative overflow-hidden"
+              style={statsBg ? { backgroundImage: `url(${statsBg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+            >
+              {statsBg && <div className="absolute inset-0 bg-brand-dark/60 backdrop-blur-[2px]" />}
+              <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10">
                 <div className="flex flex-col items-center text-center">
                   <div className="flex text-brand-red mb-2">
                     {[...Array(5)].map((_, i) => <Star key={i} size={20} fill={i < 4 ? "currentColor" : "none"} />)}
@@ -873,34 +1081,80 @@ export default function App() {
           <section className="py-32 bg-brand-dark min-h-screen">
             <div className="max-w-7xl mx-auto px-6">
               <div className="text-center mb-20">
-                <h2 className="text-5xl md:text-6xl font-serif mb-6">{t.ourMenu}</h2>
-                <p className="text-brand-beige/60 max-w-2xl mx-auto italic">{t.menuDesc}</p>
+                <motion.h2 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="text-5xl md:text-7xl font-serif mb-6"
+                >
+                  {t.ourMenu}
+                </motion.h2>
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.2 }}
+                  className="text-brand-beige/60 max-w-2xl mx-auto italic"
+                >
+                  {t.menuDesc}
+                </motion.p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-12">
+              <motion.div 
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: {
+                    opacity: 1,
+                    transition: {
+                      staggerChildren: 0.1
+                    }
+                  }
+                }}
+                className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-12"
+              >
                 {menuItems.map((item) => (
-                  <div key={item.id} className="flex justify-between items-start group">
-                    <div className="w-20 h-20 flex-shrink-0 mr-4 overflow-hidden">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  <motion.div 
+                    key={item.id} 
+                    variants={{
+                      hidden: { opacity: 0, y: 20 },
+                      show: { opacity: 1, y: 0 }
+                    }}
+                    className="flex justify-between items-start group"
+                  >
+                    <div className="w-24 h-24 flex-shrink-0 mr-6 overflow-hidden relative">
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-brand-red/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <div className="flex-1 pr-4">
                       <div className="flex items-baseline justify-between mb-2">
-                        <h4 className="text-xl font-serif group-hover:text-brand-red transition-colors">{item.name}</h4>
-                        <div className="flex-1 border-b border-dotted border-white/20 mx-4"></div>
-                        <span className="text-brand-red">{item.price} MAD</span>
+                        <h4 className="text-xl font-serif group-hover:text-brand-red transition-colors duration-300">{item.name}</h4>
+                        <div className="flex-1 border-b border-dotted border-white/10 mx-4"></div>
+                        <span className="text-brand-red font-medium">{item.price} MAD</span>
                       </div>
-                      <p className="text-brand-beige/50 text-sm italic">{item.description}</p>
+                      <p className="text-brand-beige/50 text-sm italic line-clamp-2 leading-relaxed">{item.description}</p>
                     </div>
-                    <button onClick={() => addToCart(item)} className="p-2 border border-white/10 hover:bg-brand-red transition-all"><Plus size={16} /></button>
-                  </div>
+                    <button 
+                      onClick={() => addToCart(item)} 
+                      className="p-3 border border-white/10 hover:bg-brand-red hover:border-brand-red transition-all hover:scale-110 active:scale-90"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             </div>
           </section>
         );
       case 'about':
         return (
-          <section className="py-32 bg-brand-gray japanese-texture">
-            <div className="max-w-7xl mx-auto px-6">
+          <section 
+            className="py-32 bg-brand-gray japanese-texture relative overflow-hidden"
+            style={aboutBg ? { backgroundImage: `url(${aboutBg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+          >
+            {aboutBg && <div className="absolute inset-0 bg-brand-dark/70 backdrop-blur-sm" />}
+            <div className="max-w-7xl mx-auto px-6 relative z-10">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
                 <div>
                   <h2 className="text-5xl md:text-6xl font-serif mb-8">{t.artOfSushi}</h2>
@@ -914,8 +1168,12 @@ export default function App() {
                   </div>
                 </div>
                 <div className="relative">
-                  <img src="https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1000&q=80" alt="Chef" className="w-full aspect-square object-cover grayscale" />
-                  <div className="absolute -bottom-6 -left-6 bg-brand-red p-8 hidden md:block">
+                  <img 
+                    src={aboutImage || "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1000&q=80"} 
+                    alt="Chef" 
+                    className="w-full aspect-square object-cover grayscale hover:grayscale-0 transition-all duration-700 shadow-2xl" 
+                  />
+                  <div className="absolute -bottom-6 -left-6 bg-brand-red p-8 hidden md:block shadow-xl">
                     <p className="text-4xl font-serif text-white italic">"{t.quote}"</p>
                   </div>
                 </div>
@@ -1013,7 +1271,8 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className={`min-h-screen flex flex-col bg-brand-dark text-brand-beige selection:bg-brand-red selection:text-white ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="grain" />
       <input 
         type="file" 
         ref={logoInputRef} 
@@ -1023,7 +1282,10 @@ export default function App() {
       />
       <Navbar 
         activePage={activePage} 
-        setActivePage={setActivePage} 
+        setActivePage={(p) => {
+          setActivePage(p);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }} 
         cartCount={cart.reduce((s, i) => s + i.quantity, 0)}
         toggleCart={() => setIsCartOpen(true)}
         lang={lang}
@@ -1034,16 +1296,28 @@ export default function App() {
         onLogoClick={() => logoInputRef.current?.click()}
       />
       
-      <main className="flex-grow pt-20">
+      <main className="flex-grow">
         <AnimatePresence mode="wait">
-          <motion.div key={activePage + lang} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }}>
+          <motion.div 
+            key={activePage + lang} 
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: -10 }} 
+            transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+          >
             {renderPage()}
           </motion.div>
         </AnimatePresence>
       </main>
 
-      <footer className="bg-brand-gray pt-20 pb-10 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-6">
+      <ScrollToTop />
+
+      <footer 
+        className="bg-brand-gray pt-20 pb-10 border-t border-white/5 japanese-texture relative overflow-hidden"
+        style={footerBg ? { backgroundImage: `url(${footerBg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+      >
+        {footerBg && <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-[2px]" />}
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
             <div>
               <div 
@@ -1133,7 +1407,9 @@ export default function App() {
           onClose={() => setShowMenuManager(false)} 
           onAddMenuItem={addMenuItem}
           onDeleteMenuItem={deleteMenuItem}
+          onUpdateSetting={updateSetting}
           menuItems={menuItems}
+          settings={{ logo, aboutImage, statsBg, aboutBg, footerBg }}
           t={t}
         />
       )}
@@ -1159,32 +1435,67 @@ const CartDrawer = ({ isOpen, onClose, cart, updateQuantity, removeFromCart }: a
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]" />
-          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 h-full w-full max-w-md bg-brand-dark z-[120] flex flex-col">
-            <div className="p-6 border-b border-white/10 flex justify-between items-center">
-              <h3 className="text-2xl font-serif">Your Order</h3>
-              <button onClick={onClose}><X size={24} /></button>
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            onClick={onClose} 
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110]" 
+          />
+          <motion.div 
+            initial={{ x: '100%' }} 
+            animate={{ x: 0 }} 
+            exit={{ x: '100%' }} 
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed right-0 top-0 h-full w-full max-w-md bg-brand-dark z-[120] flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)]"
+          >
+            <div className="p-8 border-b border-white/10 flex justify-between items-center">
+              <h3 className="text-3xl font-serif">Your Order</h3>
+              <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors"><X size={24} /></button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {cart.length === 0 ? <p className="text-center text-brand-beige/40 italic mt-20">Your cart is empty</p> : cart.map((item: any) => (
-                <div key={item.id} className="flex gap-4">
-                  <img src={item.image} className="w-16 h-16 object-cover" />
+            <div className="flex-1 overflow-y-auto p-8 space-y-8">
+              {cart.length === 0 ? (
+                <div className="text-center mt-20">
+                  <ShoppingBag size={48} className="mx-auto mb-6 text-brand-beige/10" />
+                  <p className="text-brand-beige/40 italic">Your cart is empty</p>
+                </div>
+              ) : cart.map((item: any) => (
+                <motion.div 
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  key={item.id} 
+                  className="flex gap-6 group"
+                >
+                  <div className="w-20 h-20 flex-shrink-0 overflow-hidden">
+                    <img src={item.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  </div>
                   <div className="flex-1">
-                    <div className="flex justify-between"><h4 className="font-serif">{item.name}</h4><button onClick={() => removeFromCart(item.id)}><Trash2 size={14} /></button></div>
-                    <p className="text-brand-red text-sm">{item.price} MAD</p>
-                    <div className="flex items-center gap-3 mt-2">
-                      <button onClick={() => updateQuantity(item.id, -1)} className="w-6 h-6 border border-white/10 flex items-center justify-center"><Minus size={12} /></button>
-                      <span className="text-sm">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.id, 1)} className="w-6 h-6 border border-white/10 flex items-center justify-center"><Plus size={12} /></button>
+                    <div className="flex justify-between mb-1">
+                      <h4 className="font-serif text-lg">{item.name}</h4>
+                      <button onClick={() => removeFromCart(item.id)} className="text-brand-beige/20 hover:text-brand-red transition-colors"><Trash2 size={16} /></button>
+                    </div>
+                    <p className="text-brand-red font-medium mb-3">{item.price} MAD</p>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center border border-white/10 rounded-full px-2 py-1">
+                        <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 flex items-center justify-center hover:text-brand-red transition-colors"><Minus size={14} /></button>
+                        <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.id, 1)} className="w-8 h-8 flex items-center justify-center hover:text-brand-red transition-colors"><Plus size={14} /></button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
             {cart.length > 0 && (
-              <div className="p-6 border-t border-white/10 bg-brand-gray">
-                <div className="flex justify-between mb-6"><span>Subtotal</span><span className="text-2xl font-serif">{total} MAD</span></div>
-                <button className="w-full bg-brand-red text-white py-4 uppercase tracking-widest text-sm">Checkout Now</button>
+              <div className="p-8 border-t border-white/10 bg-brand-gray/50 backdrop-blur-lg">
+                <div className="flex justify-between items-end mb-8">
+                  <span className="text-brand-beige/40 uppercase tracking-widest text-xs">Subtotal</span>
+                  <span className="text-3xl font-serif text-brand-red">{total} MAD</span>
+                </div>
+                <button className="w-full bg-brand-red hover:bg-red-700 text-white py-5 uppercase tracking-widest text-xs font-bold transition-all shadow-xl hover:scale-[1.02] active:scale-[0.98]">
+                  Checkout Now
+                </button>
               </div>
             )}
           </motion.div>
