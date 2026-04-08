@@ -597,7 +597,7 @@ const AdminDashboard = ({
   onDeleteMenuItem: (id: string) => Promise<void>,
   onUpdateSetting: (key: string, value: string) => Promise<void>,
   menuItems: MenuItem[],
-  settings: { logo: string, aboutImage: string, statsBg: string, aboutBg: string, footerBg: string },
+  settings: { logo: string, aboutImage: string, statsBg: string, aboutBg: string, footerBg: string, quoteImage: string },
   t: any
 }) => {
   const [activeTab, setActiveTab] = useState<'menu' | 'appearance'>('menu');
@@ -773,6 +773,12 @@ const AdminDashboard = ({
               onUpload={(url) => onUpdateSetting('footerBg', url)} 
               t={t} 
             />
+            <ImageUploadField 
+              label="Quote Section Image" 
+              value={settings.quoteImage} 
+              onUpload={(url) => onUpdateSetting('quoteImage', url)} 
+              t={t} 
+            />
           </div>
         )}
       </div>
@@ -830,6 +836,7 @@ export default function App() {
   const [statsBg, setStatsBg] = useState<string>('');
   const [aboutBg, setAboutBg] = useState<string>('');
   const [footerBg, setFooterBg] = useState<string>('');
+  const [quoteImage, setQuoteImage] = useState<string>('');
   
   const t = translations[lang];
   const isRTL = lang === 'ar';
@@ -855,6 +862,7 @@ export default function App() {
         setStatsBg(data.statsBg || '');
         setAboutBg(data.aboutBg || '');
         setFooterBg(data.footerBg || '');
+        setQuoteImage(data.quoteImage || '');
       }
     });
 
@@ -1169,9 +1177,9 @@ export default function App() {
                 </div>
                 <div className="relative">
                   <img 
-                    src={aboutImage || "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1000&q=80"} 
+                    src={quoteImage || aboutImage || "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1000&q=80"} 
                     alt="Chef" 
-                    className="w-full aspect-square object-cover grayscale hover:grayscale-0 transition-all duration-700 shadow-2xl" 
+                    className="w-full aspect-square object-cover transition-all duration-700 shadow-2xl" 
                   />
                   <div className="absolute -bottom-6 -left-6 bg-brand-red p-8 hidden md:block shadow-xl">
                     <p className="text-4xl font-serif text-white italic">"{t.quote}"</p>
@@ -1244,7 +1252,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="h-[500px] glass-morphism p-2">
-                  <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3308.218567117185!2d-6.7538888!3d33.9861111!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xda7694f4f4f4f4f%3A0x4f4f4f4f4f4f4f4f!2sSala%20Al%20Jadida!5e0!3m2!1sen!2sma!4v1620000000000!5m2!1sen!2sma" className="w-full h-full border-0 grayscale" allowFullScreen={true} loading="lazy"></iframe>
+                  <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3308.218567117185!2d-6.7538888!3d33.9861111!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xda7694f4f4f4f4f%3A0x4f4f4f4f4f4f4f4f!2sSala%20Al%20Jadida!5e0!3m2!1sen!2sma!4v1620000000000!5m2!1sen!2sma" className="w-full h-full border-0" allowFullScreen={true} loading="lazy"></iframe>
                 </div>
               </div>
             </div>
@@ -1409,7 +1417,7 @@ export default function App() {
           onDeleteMenuItem={deleteMenuItem}
           onUpdateSetting={updateSetting}
           menuItems={menuItems}
-          settings={{ logo, aboutImage, statsBg, aboutBg, footerBg }}
+          settings={{ logo, aboutImage, statsBg, aboutBg, footerBg, quoteImage }}
           t={t}
         />
       )}

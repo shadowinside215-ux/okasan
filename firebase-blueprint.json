@@ -24,6 +24,10 @@
         "footerBg": {
           "type": "string",
           "description": "Background image for the footer."
+        },
+        "quoteImage": {
+          "type": "string",
+          "description": "The image displayed with the quality quote."
         }
       },
       "required": ["logo"]

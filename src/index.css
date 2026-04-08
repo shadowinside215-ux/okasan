@@ -7,8 +7,8 @@
   
   --color-brand-red: #8B0000;
   --color-brand-beige: #F5F5DC;
-  --color-brand-dark: #0A0A0A;
-  --color-brand-gray: #1A1A1A;
+  --color-brand-dark: #000000;
+  --color-brand-gray: #000000;
 }
 
 @layer base {
